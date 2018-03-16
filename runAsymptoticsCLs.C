@@ -91,6 +91,7 @@ NOTE: The script runs significantly faster when compiled
 #include "RooCategory.h"
 #include "RooSimultaneous.h"
 #include "RooProduct.h"
+#include "RooRealSumPdf.h"
 
 #include <map>
 #include <iostream>
@@ -957,8 +958,8 @@ void doPredictiveFit(RooNLLVar* nll, double mu1, double mu2, double mu)
       }
 
       delete itr;
-      delete theta_mu1;
-      delete theta_mu2;
+      delete[] theta_mu1;
+      delete[] theta_mu2;
    }
 }
 
