@@ -159,7 +159,8 @@ void runAsymptoticsCLs(const char* infile,
                        string folder,
                        string mass,
                        double CL,
-                       bool betterBands);
+                       bool betterBands,
+                       double mu_inj = 1);
 
 //for backwards compatibility
 void runAsymptoticsCLs(const char* infile,
@@ -226,7 +227,7 @@ void runAsymptoticsCLs(const char* infile,
    conditionalSnapshot = ""; // warningless compile
    nominalSnapshot = "";     // warningless compile
 
-   runAsymptoticsCLs(infile, workspaceName, modelConfigName, dataName, asimovDataName, folder, smass.str(), CL, doBetterBands);
+   runAsymptoticsCLs(infile, workspaceName, modelConfigName, dataName, asimovDataName, folder, smass.str(), CL, doBetterBands, 0);
 }
 
 
@@ -240,7 +241,7 @@ void runAsymptoticsCLs(const char* infile,
                        string mass,
                        double CL,
                        bool doBetterBands,
-                       double mu_inj = 1)
+                       double mu_inj)
 {
    TStopwatch timer;
    timer.Start();
