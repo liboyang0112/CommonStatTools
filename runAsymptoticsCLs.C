@@ -92,6 +92,7 @@ NOTE: The script runs significantly faster when compiled
 #include "RooSimultaneous.h"
 #include "RooProduct.h"
 #include "RooRealSumPdf.h"
+#include "Minimization.h"
 
 #include <map>
 #include <iostream>
@@ -196,13 +197,17 @@ double calcCLs(double qmu_tilde, double sigma, double mu);
 double calcPmu(double qmu_tilde, double sigma, double mu);
 double calcPb(double qmu_tilde, double sigma, double mu);
 double calcDerCLs(double qmu, double sigma, double mu);
-int minimize(RooNLLVar* nll);
-int minimize(RooAbsReal* nll);
 //RooDataSet* makeAsimovData2(RooDataSet* conditioningData, double mu_true, double mu_prof = -999, string* mu_str = NULL, string* mu_prof_str = NULL);
 //RooDataSet* makeAsimovData2(RooNLLVar* conditioningNLL, double mu_true, double mu_prof = -999, string* mu_str = NULL, string* mu_prof_str = NULL);
 
 void unfoldConstraints(RooArgSet& initial, RooArgSet& final, RooArgSet& obs, RooArgSet& nuis, int& counter);
 RooDataSet* makeAsimovData(bool doConditional, RooNLLVar* conditioning_nll, double mu_val, string* mu_str = NULL, string* mu_prof_str = NULL, double mu_val_profile = -999, bool doFit = true, double mu_injection = -1);
+
+int minimize(RooNLLVar* nll)
+{
+   nrMinimize++;
+   return EXOSTATS::minimize(nll, maxRetries);
+}
 
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
@@ -1181,113 +1186,6 @@ double calcDerCLs(double qmu, double sigma, double mu)
    double pb = calcPb(qmu, sigma, mu);
    return dpmu_dq / (1 - pb) - calcCLs(qmu, sigma, mu) / (1 - pb) * d1mpb_dq;
 }
-
-int minimize(RooNLLVar* nll)
-{
-   nrMinimize++;
-   RooAbsReal* fcn = (RooAbsReal*)nll;
-   return minimize(fcn);
-}
-
-int minimize(RooAbsReal* fcn)
-{
-   static int nrItr = 0;
-   // cout << "Starting minimization. Using these global observables" << endl;
-   // mc->GetGlobalObservables()->Print("v");
-
-
-   int printLevel = ROOT::Math::MinimizerOptions::DefaultPrintLevel();
-   RooFit::MsgLevel msglevel = RooMsgService::instance().globalKillBelow();
-   if (printLevel < 0) RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
-
-   int strat = ROOT::Math::MinimizerOptions::DefaultStrategy();
-   int save_strat = strat;
-   RooMinimizer minim(*fcn);
-   minim.setStrategy(strat);
-   minim.setPrintLevel(printLevel);
-   minim.optimizeConst(2);
-
-
-   int status = minim.minimize(ROOT::Math::MinimizerOptions::DefaultMinimizerType().c_str(), ROOT::Math::MinimizerOptions::DefaultMinimizerAlgo().c_str());
-
-
-//up the strategy
-   if (status != 0 && status != 1 && strat < 2) {
-      strat++;
-      cout << "Fit failed with status " << status << ". Retrying with strategy " << strat << endl;
-      minim.setStrategy(strat);
-      status = minim.minimize(ROOT::Math::MinimizerOptions::DefaultMinimizerType().c_str(), ROOT::Math::MinimizerOptions::DefaultMinimizerAlgo().c_str());
-   }
-
-   if (status != 0 && status != 1 && strat < 2) {
-      strat++;
-      cout << "Fit failed with status " << status << ". Retrying with strategy " << strat << endl;
-      minim.setStrategy(strat);
-      status = minim.minimize(ROOT::Math::MinimizerOptions::DefaultMinimizerType().c_str(), ROOT::Math::MinimizerOptions::DefaultMinimizerAlgo().c_str());
-   }
-
-   //cout << "status is " << status << endl;
-
-// //switch minuit version and try again
-   if (status != 0 && status != 1) {
-      string minType = ROOT::Math::MinimizerOptions::DefaultMinimizerType();
-      string newMinType;
-      if (minType == "Minuit2") newMinType = "Minuit";
-      else newMinType = "Minuit2";
-
-      cout << "Switching minuit type from " << minType << " to " << newMinType << endl;
-
-      ROOT::Math::MinimizerOptions::SetDefaultMinimizer(newMinType.c_str());
-      strat = ROOT::Math::MinimizerOptions::DefaultStrategy();
-      minim.setStrategy(strat);
-
-      status = minim.minimize(ROOT::Math::MinimizerOptions::DefaultMinimizerType().c_str(), ROOT::Math::MinimizerOptions::DefaultMinimizerAlgo().c_str());
-
-
-      if (status != 0 && status != 1 && strat < 2) {
-         strat++;
-         cout << "Fit failed with status " << status << ". Retrying with strategy " << strat << endl;
-         minim.setStrategy(strat);
-         status = minim.minimize(ROOT::Math::MinimizerOptions::DefaultMinimizerType().c_str(), ROOT::Math::MinimizerOptions::DefaultMinimizerAlgo().c_str());
-      }
-
-      if (status != 0 && status != 1 && strat < 2) {
-         strat++;
-         cout << "Fit failed with status " << status << ". Retrying with strategy " << strat << endl;
-         minim.setStrategy(strat);
-         status = minim.minimize(ROOT::Math::MinimizerOptions::DefaultMinimizerType().c_str(), ROOT::Math::MinimizerOptions::DefaultMinimizerAlgo().c_str());
-      }
-
-      ROOT::Math::MinimizerOptions::SetDefaultMinimizer(minType.c_str());
-   }
-
-   if (status != 0 && status != 1) {
-      nrItr++;
-      if (nrItr > maxRetries) {
-         nrItr = 0;
-         global_status++;
-         cout << "WARNING::Fit failure unresolved with status " << status << endl;
-         return status;
-      } else {
-         if (nrItr == 0) { // retry with mu=0 snapshot
-            w->loadSnapshot("conditionalNuis_0");
-            return minimize(fcn);
-         } else if (nrItr == 1) { // retry with nominal snapshot
-            w->loadSnapshot("nominalNuis");
-            return minimize(fcn);
-         }
-      }
-   }
-
-   if (printLevel < 0) RooMsgService::instance().setGlobalKillBelow(msglevel);
-   ROOT::Math::MinimizerOptions::SetDefaultStrategy(save_strat);
-
-
-   if (nrItr != 0) cout << "Successful fit" << endl;
-   nrItr = 0;
-   return status;
-}
-
 
 /*
 RooDataSet* makeAsimovData2(RooDataSet* conditioningData, double mu_true, double mu_prof, string* mu_str, string* mu_prof_str)
