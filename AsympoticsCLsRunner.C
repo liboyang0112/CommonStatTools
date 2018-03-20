@@ -80,22 +80,6 @@ int EXOSTATS::AsymptoticsCLsRunner::minimize(RooNLLVar *nll)
 
 void EXOSTATS::AsymptoticsCLsRunner::runAsymptoticsCLs(const char *infile, const char *workspaceName,
                                                        const char *modelConfigName, const char *dataName,
-                                                       const char *asimovDataName, const char *conditionalSnapshot,
-                                                       const char *nominalSnapshot, string folder, string mass,
-                                                       double CL, bool doBetterBands)
-{
-   stringstream smass;
-   smass << mass;
-
-   conditionalSnapshot = ""; // warningless compile
-   nominalSnapshot     = ""; // warningless compile
-
-   runAsymptoticsCLs(infile, workspaceName, modelConfigName, dataName, asimovDataName, folder, smass.str(), CL,
-                     doBetterBands, 0);
-}
-
-void EXOSTATS::AsymptoticsCLsRunner::runAsymptoticsCLs(const char *infile, const char *workspaceName,
-                                                       const char *modelConfigName, const char *dataName,
                                                        const char *asimovDataName, string folder, string mass,
                                                        double CL, bool doBetterBands, double mu_inj)
 {

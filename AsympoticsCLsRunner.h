@@ -96,14 +96,6 @@ public:
                           const char *dataName, const char *asimovDataName, std::string folder, std::string mass,
                           Double_t CL, Bool_t betterBands, Double_t mu_inj = 1);
 
-   // for backwards compatibility
-   void runAsymptoticsCLs(const char *infile, const char *workspaceName = "combWS",
-                          const char *modelConfigName = "ModelConfig", const char *dataName = "combData",
-                          const char *asimovDataName      = "asimovData_0",
-                          const char *conditionalSnapshot = "conditionalGlobs_0",
-                          const char *nominalSnapshot = "nominalGlobs", std::string folder = "test",
-                          std::string mass = "130", Double_t CL = 0.95, Bool_t betterBands = false);
-
 public:
    void     setBetterBands(Bool_t value);
    void     setBetterNegativeBands(Bool_t value);
