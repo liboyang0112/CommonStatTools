@@ -51,6 +51,7 @@ void EXOSTATS::AsymptoticsCLsRunner::reset()
    m_extrapolateSigma    = 1;    // experimantal, extrapolate sigma based on previous fits
    m_maxRetries          = 3;    // number of minimize(fcn) retries before giving up
    m_doPvals             = true; // perform pvalue calculation
+   m_NumCPU              = 4; // for the parallelisation of the likelihood calculation 
 
    // don't touch!
    m_map_nll_muhat.clear();
@@ -866,9 +867,9 @@ RooNLLVar *EXOSTATS::AsymptoticsCLsRunner::createNLL(RooDataSet *_data)
    const RooArgSet *nuis = m_mc->GetNuisanceParameters();
    RooNLLVar *      nll;
    if (nuis != 0)
-      nll = (RooNLLVar *)m_mc->GetPdf()->createNLL(*_data, Constrain(*nuis), NumCPU(4, 3), Optimize(2), Offset(true));
+      nll = (RooNLLVar *)m_mc->GetPdf()->createNLL(*_data, Constrain(*nuis), NumCPU(m_NumCPU, 3), Optimize(2), Offset(true));
    else
-      nll = (RooNLLVar *)m_mc->GetPdf()->createNLL(*_data, NumCPU(4, 3), Optimize(2), Offset(true));
+      nll = (RooNLLVar *)m_mc->GetPdf()->createNLL(*_data, NumCPU(m_NumCPU, 3), Optimize(2), Offset(true));
    return nll;
 }
 
@@ -1414,6 +1415,11 @@ void EXOSTATS::AsymptoticsCLsRunner::setCalculatePvalues(Bool_t value)
    m_doPvals = value;
 }
 
+void EXOSTATS::AsymptoticsCLsRunner::setNumCPU(Int_t value)
+{
+   m_NumCPU = value;
+}
+
 Bool_t EXOSTATS::AsymptoticsCLsRunner::getBetterBands()
 {
    return m_betterBands;
@@ -1514,6 +1520,11 @@ Bool_t EXOSTATS::AsymptoticsCLsRunner::getCalculatePvalues()
    return m_doPvals;
 }
 
+Int_t EXOSTATS::AsymptoticsCLsRunner::getNumCPU()
+{
+   return m_NumCPU;
+}
+
 void EXOSTATS::AsymptoticsCLsRunner::printOptionValues()
 {
    cout << "Settings:" << endl;
@@ -1537,6 +1548,7 @@ void EXOSTATS::AsymptoticsCLsRunner::printOptionValues()
    cout << "  - extrapolateSigma is set to " << m_extrapolateSigma << endl;
    cout << "  - maxRetries is set to " << m_maxRetries << endl;
    cout << "  - doPvals is set to " << m_doPvals << endl;
+   cout << "  - NumCPU is set to " << m_NumCPU << endl;
    cout << "  - target_CLs is set to " << m_target_CLs << endl;
    cout << endl;
 }

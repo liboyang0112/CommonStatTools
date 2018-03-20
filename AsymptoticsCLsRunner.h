@@ -122,6 +122,7 @@ public:
    void     setExtrapolateSigma(Bool_t value);
    void     setMaxRetries(Int_t value);
    void     setCalculatePvalues(Bool_t value);
+   void     setNumCPU(Int_t value);
    Bool_t   getBetterBands();
    Bool_t   getBetterNegativeBands();
    Bool_t   getProfileNegativeAtZero();
@@ -142,6 +143,7 @@ public:
    Bool_t   getExtrapolateSigma();
    Int_t    getMaxRetries();
    Bool_t   getCalculatePvalues();
+   Int_t    getNumCPU();
    void     printOptionValues();
 
 protected:
@@ -190,6 +192,7 @@ private:
    Bool_t      m_extrapolateSigma;
    int         m_maxRetries;
    Bool_t      m_doPvals;
+   Int_t       m_NumCPU;
 
    // don't touch!
    std::map<RooNLLVar *, Double_t>                     m_map_nll_muhat;
