@@ -117,7 +117,7 @@ public:
    void     setInjection(Bool_t value);
    void     setInjectionStrength(Double_t value);
    void     setPrecision(Double_t value);
-   void     setVerbose(Bool_t value);
+   void     setDebugLevel(Int_t value);
    void     setUsePredictiveFit(Bool_t value);
    void     setExtrapolateSigma(Bool_t value);
    void     setMaxRetries(Int_t value);
@@ -137,7 +137,7 @@ public:
    Bool_t   getInjection();
    Double_t getInjectionStrength();
    Double_t getPrecision();
-   Bool_t   getVerbose();
+   Int_t    getDebugLevel();
    Bool_t   getUsePredictiveFit();
    Bool_t   getExtrapolateSigma();
    Int_t    getMaxRetries();
@@ -185,7 +185,7 @@ private:
    Bool_t      m_doInj;
    Double_t    m_muInjection;
    Double_t    m_precision;
-   Bool_t      m_verbose;
+   Int_t       m_debugLevel;
    Bool_t      m_usePredictiveFit;
    Bool_t      m_extrapolateSigma;
    int         m_maxRetries;

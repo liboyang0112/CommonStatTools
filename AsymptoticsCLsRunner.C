@@ -46,7 +46,7 @@ void EXOSTATS::AsymptoticsCLsRunner::reset()
    m_doInj               = 0;               // compute expected limit after signal injection
    m_muInjection         = 1;               // mu value to be used for signal injection
    m_precision           = 0.005;           // % precision in mu that defines iterative cutoff
-   m_verbose             = 0;               // 1 = very spammy
+   m_debugLevel          = 0;               // 0 = verbose, 1 = debug, 2 = warning, 3 = error, 4 = fatal, 5 = silent
    m_usePredictiveFit    = 1;    // experimental, extrapolate best fit nuisance parameters based on previous fit results
    m_extrapolateSigma    = 1;    // experimantal, extrapolate sigma based on previous fits
    m_maxRetries          = 3;    // number of minimize(fcn) retries before giving up
@@ -140,7 +140,7 @@ TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, con
    m_firstPOI    = (RooRealVar *)m_mc->GetParametersOfInterest()->first();
    m_firstPOIMax = m_firstPOI->getMax();
    m_firstPOIMin = m_firstPOI->getMin();
-   if (m_verbose) {
+   if (m_debugLevel == 0) {
       cout << "runAsymptoticsCLs: get min and max of m_firstPOI " << endl;
       cout << "firstPOIMin " << m_firstPOIMin << endl;
       cout << "firstPOIMax " << m_firstPOIMax << endl;
@@ -152,6 +152,9 @@ TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, con
       throw std::runtime_error("Invalid input");
       return nullptr;
    }
+   if (m_debugLevel == 0) {
+      cout << "runAsymptoticsCLs: read data " << dataName << endl;
+   }
 
    // RooAbsPdf* pdf = m_mc->GetPdf();
    m_obs_nll                  = createNLL(m_data); //(RooNLLVar*)pdf->createNLL(*m_data);
@@ -159,17 +162,29 @@ TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, con
    m_map_data_nll[m_data]     = m_obs_nll;
    m_w->saveSnapshot("nominalGlobs", *m_mc->GetGlobalObservables());
    m_w->saveSnapshot("nominalNuis", (m_mc->GetNuisanceParameters() ? *m_mc->GetNuisanceParameters() : RooArgSet()));
+   if (m_debugLevel == 0) {
+      cout << "runAsymptoticsCLs: saved nominal snapshots" << endl;
+   }
 
-   m_global_status          = 0;
+   m_global_status = 0;
+   if (m_debugLevel == 0) {
+      cout << "runAsymptoticsCLs: preparing Asimov datasets" << endl;
+   }
    RooDataSet *asimovData_0 = (RooDataSet *)m_w->data(asimovDataName);
    RooDataSet *asimovData_1 = EXOSTATS::makeAsimovData(m_w, modelConfigName, m_conditionalExpected, m_obs_nll, 1);
    if (!asimovData_0) {
+      if (m_debugLevel == 0) {
+         cout << "runAsymptoticsCLs: null hypothesis Asimov dataset does not exist, regenerating..." << endl;
+      }
       asimovData_0 = EXOSTATS::makeAsimovData(m_w, modelConfigName, m_conditionalExpected, m_obs_nll, 0);
 
       // asimovData_0 = makeAsimovData2((m_conditionalExpected ? m_obs_nll : (RooNLLVar*)nullptr), 0., 0.);
    }
    int asimov0_status = m_global_status;
 
+   if (m_debugLevel == 0) {
+      cout << "runAsymptoticsCLs: creating NLL and mapping snapshots" << endl;
+   }
    m_asimov_0_nll                  = createNLL(asimovData_0); //(RooNLLVar*)pdf->createNLL(*asimovData_0);
    m_asimov_1_nll                  = createNLL(asimovData_1); //(RooNLLVar*)pdf->createNLL(*asimovData_0);
    m_map_snapshots[m_asimov_0_nll] = "conditionalGlobs_0";
@@ -197,6 +212,9 @@ TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, con
    int    inj_status = 0;
 
    if (m_doInj) {
+      if (m_debugLevel == 0) {
+         cout << "runAsymptoticsCLs: injecting signal with strength " << m_muInjection << endl;
+      }
       RooDataSet *asimovData_inj = EXOSTATS::makeAsimovData(m_w, modelConfigName, m_conditionalExpected, m_obs_nll, 0,
                                                             nullptr, nullptr, -999, true, m_muInjection);
 
@@ -618,6 +636,7 @@ void EXOSTATS::AsymptoticsCLsRunner::getLimit(RooNLLVar *nll, double initial_gue
       nrItr++;
       if (nrItr > 25) {
          cout << "Infinite loop detected in getLimit(). Please intervene." << endl;
+         throw std::runtime_error("Infinite loop");
          break;
       }
    }
@@ -635,7 +654,7 @@ void EXOSTATS::AsymptoticsCLsRunner::getLimit(RooNLLVar *nll, double initial_gue
 double EXOSTATS::AsymptoticsCLsRunner::getSigma(RooNLLVar *nll, double mu, double muhat, double &qmu)
 {
    qmu = getQmu(nll, mu);
-   if (m_verbose) cout << "qmu = " << qmu << endl;
+   if (m_debugLevel == 0) cout << "qmu = " << qmu << endl;
    if (mu * m_direction < muhat)
       return fabs(mu - muhat) / sqrt(qmu);
    else if (muhat < 0 && m_doTilde)
@@ -888,7 +907,7 @@ double EXOSTATS::AsymptoticsCLsRunner::findCrossing(double sigma_obs, double sig
       for (map<double, double>::iterator itr = guess_to_corr.begin(); itr != guess_to_corr.end(); itr++) {
          if (fabs(itr->first - mu_guess) < m_direction * mu_guess * m_precision) {
             damping_factor *= 0.8;
-            if (m_verbose)
+            if (m_debugLevel == 0)
                cout << "Changing damping factor to " << damping_factor << ", nrDamping = " << nrDamping << endl;
             if (nrDamping++ > 10) {
                nrDamping      = 1;
@@ -904,9 +923,10 @@ double EXOSTATS::AsymptoticsCLsRunner::findCrossing(double sigma_obs, double sig
       nrItr++;
       if (nrItr > 100) {
          cout << "Infinite loop detected in findCrossing. Please intervene." << endl;
+         throw std::runtime_error("Infinite loop");
          exit(1);
       }
-      if (m_verbose)
+      if (m_debugLevel == 0)
          cout << "mu_guess = " << mu_guess << ", mu_pre = " << mu_pre << ", qmu = " << qmu << ", qmu95 = " << qmu95
               << ", sigma_obs_extrap = " << sigma_obs_extrap << ", sigma = " << sigma
               << ", direction*mu*prec = " << m_direction * mu_guess * m_precision << endl;
@@ -919,6 +939,7 @@ void EXOSTATS::AsymptoticsCLsRunner::setMu(double mu)
 {
    if (mu != mu) {
       cout << "ERROR::POI gave nan. Please intervene." << endl;
+      throw std::runtime_error("POI is NaN");
       exit(1);
    }
    if (mu > 0 && m_firstPOI->getMax() < mu) m_firstPOI->setMax(2 * mu);
@@ -956,7 +977,7 @@ double EXOSTATS::AsymptoticsCLsRunner::getQmu95(double sigma, double mu)
       double              qmu95_pre      = qmu95_guess - 10 * 2 * qmu95_guess * m_precision;
       while (fabs(qmu95_guess - qmu95_pre) > 2 * qmu95_guess * m_precision) {
          qmu95_pre = qmu95_guess;
-         if (m_verbose) {
+         if (m_debugLevel == 0) {
             cout << "qmu95_guess = " << qmu95_guess << endl;
             cout << "CLs = " << calcCLs(qmu95_guess, sigma, mu) << endl;
             cout << "Derivative = " << calcDerCLs(qmu95_guess, sigma, mu) << endl;
@@ -967,7 +988,7 @@ double EXOSTATS::AsymptoticsCLsRunner::getQmu95(double sigma, double mu)
          for (map<double, double>::iterator itr = guess_to_corr.begin(); itr != guess_to_corr.end(); itr++) {
             if (fabs(itr->first - qmu95_guess) < 2 * qmu95_guess * m_precision) {
                damping_factor *= 0.8;
-               if (m_verbose)
+               if (m_debugLevel == 0)
                   cout << "Changing damping factor to " << damping_factor << ", nrDamping = " << nrDamping << endl;
                if (nrDamping++ > 10) {
                   nrDamping      = 1;
@@ -980,7 +1001,7 @@ double EXOSTATS::AsymptoticsCLsRunner::getQmu95(double sigma, double mu)
          guess_to_corr[qmu95_guess] = corr;
          qmu95_guess                = qmu95_guess - corr;
 
-         if (m_verbose) {
+         if (m_debugLevel == 0) {
             cout << "next guess = " << qmu95_guess << endl;
             cout << "precision = " << 2 * qmu95_guess * m_precision << endl;
             cout << endl;
@@ -988,6 +1009,7 @@ double EXOSTATS::AsymptoticsCLsRunner::getQmu95(double sigma, double mu)
          nrItr++;
          if (nrItr > 200) {
             cout << "Infinite loop detected in getQmu95. Please intervene." << endl;
+            throw std::runtime_error("Infinite loop");
             exit(1);
          }
       }
@@ -997,7 +1019,7 @@ double EXOSTATS::AsymptoticsCLsRunner::getQmu95(double sigma, double mu)
    if (qmu95 != qmu95) {
       qmu95 = getQmu95_brute(sigma, mu);
    }
-   if (m_verbose) cout << "Returning qmu95 = " << qmu95 << endl;
+   if (m_debugLevel == 0) cout << "Returning qmu95 = " << qmu95 << endl;
 
    return qmu95;
 }
@@ -1006,7 +1028,7 @@ double EXOSTATS::AsymptoticsCLsRunner::calcCLs(double qmu_tilde, double sigma, d
 {
    double pmu = calcPmu(qmu_tilde, sigma, mu);
    double pb  = calcPb(qmu_tilde, sigma, mu);
-   if (m_verbose) {
+   if (m_debugLevel == 0) {
       cout << "pmu = " << pmu << endl;
       cout << "pb = " << pb << endl;
    }
@@ -1022,7 +1044,7 @@ double EXOSTATS::AsymptoticsCLsRunner::calcPmu(double qmu, double sigma, double 
    } else {
       pmu = 1 - ROOT::Math::gaussian_cdf((qmu + mu * mu / (sigma * sigma)) / (2 * fabs(mu / sigma)));
    }
-   if (m_verbose)
+   if (m_debugLevel == 0)
       cout << "for pmu, qmu = " << qmu << ", sigma = " << sigma << ", mu = " << mu << ", pmu = " << pmu << endl;
    return pmu;
 }
@@ -1362,9 +1384,9 @@ void EXOSTATS::AsymptoticsCLsRunner::setPrecision(Double_t value)
    m_precision = value;
 }
 
-void EXOSTATS::AsymptoticsCLsRunner::setVerbose(Bool_t value)
+void EXOSTATS::AsymptoticsCLsRunner::setDebugLevel(Int_t value)
 {
-   m_verbose = value;
+   m_debugLevel = value;
 }
 
 void EXOSTATS::AsymptoticsCLsRunner::setUsePredictiveFit(Bool_t value)
@@ -1462,9 +1484,9 @@ Double_t EXOSTATS::AsymptoticsCLsRunner::getPrecision()
    return m_precision;
 }
 
-Bool_t EXOSTATS::AsymptoticsCLsRunner::getVerbose()
+Int_t EXOSTATS::AsymptoticsCLsRunner::getDebugLevel()
 {
-   return m_verbose;
+   return m_debugLevel;
 }
 
 Bool_t EXOSTATS::AsymptoticsCLsRunner::getUsePredictiveFit()
@@ -1505,7 +1527,7 @@ void EXOSTATS::AsymptoticsCLsRunner::printOptionValues()
    cout << "  - doInj is set to " << m_doInj << endl;
    cout << "  - muInjection is set to " << m_muInjection << endl;
    cout << "  - precision is set to " << m_precision << endl;
-   cout << "  - verbose is set to " << m_verbose << endl;
+   cout << "  - debugLevel is set to " << m_debugLevel << endl;
    cout << "  - usePredictiveFit is set to " << m_usePredictiveFit << endl;
    cout << "  - extrapolateSigma is set to " << m_extrapolateSigma << endl;
    cout << "  - maxRetries is set to " << m_maxRetries << endl;
