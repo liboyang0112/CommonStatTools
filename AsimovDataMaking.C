@@ -21,6 +21,7 @@ void EXOSTATS::unfoldConstraints(RooArgSet &initial, RooArgSet &final, RooArgSet
       cout << endl;
       cout << "Final: " << endl;
       final.Print("v");
+      throw std::runtime_error("Infinite loop");
       exit(1);
    }
    TIterator *itr = initial.createIterator();
@@ -45,11 +46,12 @@ void EXOSTATS::unfoldConstraints(RooArgSet &initial, RooArgSet &final, RooArgSet
 RooDataSet *EXOSTATS::makeAsimovData(RooWorkspace *w, TString modelConfigName, Bool_t doConditional,
                                      RooNLLVar *conditioning_nll, Double_t mu_val, std::string *mu_str,
                                      std::string *mu_prof_str, Double_t mu_val_profile, Bool_t doFit,
-                                     Double_t mu_injection)
+                                     Double_t mu_injection, Int_t debugLevel)
 {
    if (mu_val_profile == -999) mu_val_profile = mu_val;
 
-   cout << "Creating asimov data at mu = " << mu_val << ", profiling at mu = " << mu_val_profile << endl;
+   if (debugLevel >= 0)
+      cout << "Creating asimov data at mu = " << mu_val << ", profiling at mu = " << mu_val_profile << endl;
 
    // ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2");
    // int strat = ROOT::Math::MinimizerOptions::SetDefaultStrategy(0);
@@ -330,6 +332,7 @@ RooDataSet *EXOSTATS::makeAsimovData(RooWorkspace *w, TString modelConfigName, B
       }
       if (asimovData->sumEntries() != asimovData->sumEntries()) {
          cout << "sum entries is nan" << endl;
+         throw std::runtime_error("NaN encountered");
          exit(1);
       }
 
@@ -390,6 +393,7 @@ RooDataSet *EXOSTATS::makeAsimovData(RooWorkspace *w, TString modelConfigName, B
          }
          if (obsDataUnbinned->sumEntries() != obsDataUnbinned->sumEntries()) {
             cout << "sum entries is nan" << endl;
+            throw std::runtime_error("NaN encountered");
             exit(1);
          }
 

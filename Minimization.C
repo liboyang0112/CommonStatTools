@@ -7,17 +7,20 @@
 
 #include "Minimization.h"
 
-int EXOSTATS::minimize(RooNLLVar *nll, Int_t maxRetries, RooWorkspace *w, TString mu0Snapshot, TString nominalSnapshot)
+int EXOSTATS::minimize(RooNLLVar *nll, Int_t maxRetries, RooWorkspace *w, TString mu0Snapshot, TString nominalSnapshot,
+                       Int_t debugLevel)
 {
    RooAbsReal *fcn = (RooAbsReal *)nll;
-   return EXOSTATS::minimize(fcn, maxRetries, w, mu0Snapshot, nominalSnapshot);
+   return EXOSTATS::minimize(fcn, maxRetries, w, mu0Snapshot, nominalSnapshot, debugLevel);
 }
 
-int EXOSTATS::minimize(RooAbsReal *fcn, Int_t maxRetries, RooWorkspace *w, TString mu0Snapshot, TString nominalSnapshot)
+int EXOSTATS::minimize(RooAbsReal *fcn, Int_t maxRetries, RooWorkspace *w, TString mu0Snapshot, TString nominalSnapshot,
+                       Int_t debugLevel)
 {
    static int nrItr = 0;
-   // cout << "Starting minimization. Using these global observables" << endl;
-   // mc->GetGlobalObservables()->Print("v");
+   if (debugLevel == 0) {
+      cout << "Starting minimization" << endl;
+   }
 
    int              printLevel = ROOT::Math::MinimizerOptions::DefaultPrintLevel();
    RooFit::MsgLevel msglevel   = RooMsgService::instance().globalKillBelow();
