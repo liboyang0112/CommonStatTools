@@ -97,6 +97,7 @@ void EXOSTATS::AsymptoticsCLsRunner::reset()
 
 int EXOSTATS::AsymptoticsCLsRunner::minimize(RooNLLVar *nll)
 {
+   if (m_debugLevel == 0) cout << "Call #" << m_nrMinimize << " to minimize" << endl;
    m_nrMinimize++;
    return EXOSTATS::minimize(nll, m_maxRetries);
 }
