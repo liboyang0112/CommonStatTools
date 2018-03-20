@@ -95,9 +95,11 @@ void EXOSTATS::AsymptoticsCLsRunner::run(const char *inputFile, const char *work
 
    TTree *tree = computeLimit(workspace, modelConfigName, dataName, paramName, paramValue, CL, asimovDataName);
 
-   const TString blindness   = (m_doBlind) ? "_BLIND" : "";
-   const TString clstring    = TString::Format("CL%2.0f", CL * 100.0);
-   const TString outFileName = outputFolder + "/asymptotics/" + workspaceTag + blindness + clstring + ".root";
+   const TString blindness     = (m_doBlind) ? "_BLIND" : "";
+   const TString clstring      = TString::Format("CL%2.0f", CL * 100.0);
+   const TString fullOutFolder = outputFolder + "/asymptotics/";
+   system(("mkdir -vp " + fullOutFolder).Data());
+   const TString outFileName = fullOutFolder + workspaceTag + blindness + clstring + ".root";
    TFile         f_out(outFileName, "RECREATE");
    tree->SetDirectory(&f_out);
    f_out.Write();
