@@ -18,12 +18,20 @@
 
 using namespace RooFit;
 
+EXOSTATS::AsymptoticsCLsRunner::AsymptoticsCLsRunner()
+{
+   init();
+}
+
+EXOSTATS::AsymptoticsCLsRunner::~AsymptoticsCLsRunner() {}
+
 void EXOSTATS::AsymptoticsCLsRunner::init()
 {
    // band configuration
    m_betterBands = 1; // (recommendation = 1) improve bands by using a more appropriate asimov dataset for those points
    m_betterNegativeBands   = 0; // (recommendation = 0) improve also the negative bands
    m_profileNegativeAtZero = 0; // (recommendation = 0) profile asimov for negative bands at zero
+
    // other configuration
    m_defaultMinimizer    = "Minuit2"; // or "Minuit"
    m_defaultPrintLevel   = 1;         // Minuit print level
@@ -1260,9 +1268,59 @@ RooDataSet(("asimovData"+muStr.str()).c_str(),("asimovData"+muStr.str()).c_str()
 }
 */
 
-void EXOSTATS::AsymptoticsCLsRunner::doExpected(bool isExpected)
+void EXOSTATS::AsymptoticsCLsRunner::setBetterBands(Bool_t value)
 {
-   if (isExpected) {
+   m_betterBands = value;
+}
+
+void EXOSTATS::AsymptoticsCLsRunner::setBetterNegativeBands(Bool_t value)
+{
+   m_betterNegativeBands = value;
+}
+
+void EXOSTATS::AsymptoticsCLsRunner::setProfileNegativeAtZero(Bool_t value)
+{
+   m_profileNegativeAtZero = value;
+}
+
+void EXOSTATS::AsymptoticsCLsRunner::setDefaultMinimizer(TString value)
+{
+   m_defaultMinimizer = value;
+}
+
+void EXOSTATS::AsymptoticsCLsRunner::setDefaultMinimizerPrintLevel(Int_t value)
+{
+   m_defaultPrintLevel = value;
+}
+
+void EXOSTATS::AsymptoticsCLsRunner::setDefaultMinimizerStrategy(Int_t value)
+{
+   m_defaultStrategy = value;
+}
+
+void EXOSTATS::AsymptoticsCLsRunner::setRooFitWarningSuppression(Bool_t value)
+{
+   m_killBelowFatal = value;
+}
+
+void EXOSTATS::AsymptoticsCLsRunner::setBlind(Bool_t value)
+{
+   m_doBlind = value;
+}
+
+void EXOSTATS::AsymptoticsCLsRunner::setConditionalExpected(Bool_t value)
+{
+   m_conditionalExpected = value;
+}
+
+void EXOSTATS::AsymptoticsCLsRunner::setTilde(Bool_t value)
+{
+   m_doTilde = value;
+}
+
+void EXOSTATS::AsymptoticsCLsRunner::setExpected(Bool_t value)
+{
+   if (value) {
       m_doBlind             = 1;               // in case your analysis is blinded
       m_conditionalExpected = 1 && !m_doBlind; // Profiling mode for Asimov data: 1 = conditional MLEs, 0 = nominal MLEs
       m_doExp               = 1;               // compute expected limit
@@ -1275,17 +1333,137 @@ void EXOSTATS::AsymptoticsCLsRunner::doExpected(bool isExpected)
    }
 }
 
-void EXOSTATS::AsymptoticsCLsRunner::doPvalues(bool calc)
+void EXOSTATS::AsymptoticsCLsRunner::setObserved(Bool_t value)
 {
-   m_doPvals = calc;
+   m_doObs = value;
 }
 
-void EXOSTATS::AsymptoticsCLsRunner::doBetterBands(bool isBetterBands)
+void EXOSTATS::AsymptoticsCLsRunner::setInjection(Bool_t value)
 {
-   m_betterBands = isBetterBands;
+   m_doInj = value;
 }
 
-void EXOSTATS::AsymptoticsCLsRunner::doInjection(bool injection)
+void EXOSTATS::AsymptoticsCLsRunner::setPrecision(Double_t value)
 {
-   m_doInj = injection;
+   m_precision = value;
+}
+
+void EXOSTATS::AsymptoticsCLsRunner::setVerbose(Bool_t value)
+{
+   m_verbose = value;
+}
+
+void EXOSTATS::AsymptoticsCLsRunner::setUsePredictiveFit(Bool_t value)
+{
+   m_usePredictiveFit = value;
+}
+
+void EXOSTATS::AsymptoticsCLsRunner::setExtrapolateSigma(Bool_t value)
+{
+   m_extrapolateSigma = value;
+}
+
+void EXOSTATS::AsymptoticsCLsRunner::setMaxRetries(Int_t value)
+{
+   m_maxRetries = value;
+}
+
+void EXOSTATS::AsymptoticsCLsRunner::setCalculatePvalues(Bool_t value)
+{
+   m_doPvals = value;
+}
+
+Bool_t EXOSTATS::AsymptoticsCLsRunner::getBetterBands()
+{
+   return m_betterBands;
+}
+
+Bool_t EXOSTATS::AsymptoticsCLsRunner::getBetterNegativeBands()
+{
+   return m_betterNegativeBands;
+}
+
+Bool_t EXOSTATS::AsymptoticsCLsRunner::getProfileNegativeAtZero()
+{
+   return m_profileNegativeAtZero;
+}
+
+TString EXOSTATS::AsymptoticsCLsRunner::getDefaultMinimizer()
+{
+   return m_defaultMinimizer;
+}
+
+Int_t EXOSTATS::AsymptoticsCLsRunner::getDefaultMinimizerPrintLevel()
+{
+   return m_defaultPrintLevel;
+}
+
+Int_t EXOSTATS::AsymptoticsCLsRunner::getDefaultMinimizerStrategy()
+{
+   return m_defaultStrategy;
+}
+
+Bool_t EXOSTATS::AsymptoticsCLsRunner::getRooFitWarningSuppression()
+{
+   return m_killBelowFatal;
+}
+
+Bool_t EXOSTATS::AsymptoticsCLsRunner::getBlind()
+{
+   return m_doBlind;
+}
+
+Bool_t EXOSTATS::AsymptoticsCLsRunner::getConditionalExpected()
+{
+   return m_conditionalExpected;
+}
+
+Bool_t EXOSTATS::AsymptoticsCLsRunner::getTilde()
+{
+   return m_doTilde;
+}
+
+Bool_t EXOSTATS::AsymptoticsCLsRunner::getExpected()
+{
+   return m_doExp;
+}
+
+Bool_t EXOSTATS::AsymptoticsCLsRunner::getObserved()
+{
+   return m_doObs;
+}
+
+Bool_t EXOSTATS::AsymptoticsCLsRunner::getInjection()
+{
+   return m_doInj;
+}
+
+Double_t EXOSTATS::AsymptoticsCLsRunner::getPrecision()
+{
+   return m_precision;
+}
+
+Bool_t EXOSTATS::AsymptoticsCLsRunner::getVerbose()
+{
+   return m_verbose;
+}
+
+Bool_t EXOSTATS::AsymptoticsCLsRunner::getUsePredictiveFit()
+{
+   return m_usePredictiveFit;
+}
+
+Bool_t EXOSTATS::AsymptoticsCLsRunner::getExtrapolateSigma()
+{
+   return m_extrapolateSigma;
+}
+
+Int_t EXOSTATS::AsymptoticsCLsRunner::getMaxRetries()
+{
+   return m_maxRetries;
+}
+
+Bool_t EXOSTATS::AsymptoticsCLsRunner::getCalculatePvalues()
+{
+   return m_doPvals;
 }

@@ -85,6 +85,88 @@ class RooRealVar;
 
 namespace EXOSTATS {
 class AsymptoticsCLsRunner {
+public:
+   AsymptoticsCLsRunner();
+   ~AsymptoticsCLsRunner();
+
+   void init();
+
+   // main
+   void runAsymptoticsCLs(const char *infile, const char *workspaceName, const char *modelConfigName,
+                          const char *dataName, const char *asimovDataName, std::string folder, std::string mass,
+                          Double_t CL, Bool_t betterBands, Double_t mu_inj = 1);
+
+   // for backwards compatibility
+   void runAsymptoticsCLs(const char *infile, const char *workspaceName = "combWS",
+                          const char *modelConfigName = "ModelConfig", const char *dataName = "combData",
+                          const char *asimovDataName      = "asimovData_0",
+                          const char *conditionalSnapshot = "conditionalGlobs_0",
+                          const char *nominalSnapshot = "nominalGlobs", std::string folder = "test",
+                          std::string mass = "130", Double_t CL = 0.95, Bool_t betterBands = false);
+
+public:
+   void     setBetterBands(Bool_t value);
+   void     setBetterNegativeBands(Bool_t value);
+   void     setProfileNegativeAtZero(Bool_t value);
+   void     setDefaultMinimizer(TString value);
+   void     setDefaultMinimizerPrintLevel(Int_t value);
+   void     setDefaultMinimizerStrategy(Int_t value);
+   void     setRooFitWarningSuppression(Bool_t value);
+   void     setBlind(Bool_t value);
+   void     setConditionalExpected(Bool_t value);
+   void     setTilde(Bool_t value);
+   void     setExpected(Bool_t value);
+   void     setObserved(Bool_t value);
+   void     setInjection(Bool_t value);
+   void     setPrecision(Double_t value);
+   void     setVerbose(Bool_t value);
+   void     setUsePredictiveFit(Bool_t value);
+   void     setExtrapolateSigma(Bool_t value);
+   void     setMaxRetries(Int_t value);
+   void     setCalculatePvalues(Bool_t value);
+   Bool_t   getBetterBands();
+   Bool_t   getBetterNegativeBands();
+   Bool_t   getProfileNegativeAtZero();
+   TString  getDefaultMinimizer();
+   Int_t    getDefaultMinimizerPrintLevel();
+   Int_t    getDefaultMinimizerStrategy();
+   Bool_t   getRooFitWarningSuppression();
+   Bool_t   getBlind();
+   Bool_t   getConditionalExpected();
+   Bool_t   getTilde();
+   Bool_t   getExpected();
+   Bool_t   getObserved();
+   Bool_t   getInjection();
+   Double_t getPrecision();
+   Bool_t   getVerbose();
+   Bool_t   getUsePredictiveFit();
+   Bool_t   getExtrapolateSigma();
+   Int_t    getMaxRetries();
+   Bool_t   getCalculatePvalues();
+
+protected:
+   Int_t    minimize(RooNLLVar *nll);
+   Double_t getLimit(RooNLLVar *nll, Double_t initial_guess = 0);
+   void     getLimit(RooNLLVar *nll, Double_t initial_guess, Double_t &upper_limit, Double_t &muhat);
+   Double_t getSigma(RooNLLVar *nll, Double_t mu, Double_t muhat, Double_t &qmu);
+   Double_t getQmu(RooNLLVar *nll, Double_t mu);
+   void     getExpPvalue(Double_t &pb);
+   void     getObsPvalue(Double_t mu, Double_t &pv);
+
+   void       saveSnapshot(RooNLLVar *nll, Double_t mu);
+   void       loadSnapshot(RooNLLVar *nll, Double_t mu);
+   void       doPredictiveFit(RooNLLVar *nll, Double_t mu1, Double_t m2, Double_t mu);
+   RooNLLVar *createNLL(RooDataSet *_data);
+   Double_t   getNLL(RooNLLVar *nll);
+   Double_t   findCrossing(Double_t sigma_obs, Double_t sigma, Double_t muhat);
+   void       setMu(Double_t mu);
+   Double_t   getQmu95_brute(Double_t sigma, Double_t mu);
+   Double_t   getQmu95(Double_t sigma, Double_t mu);
+   Double_t   calcCLs(Double_t qmu_tilde, Double_t sigma, Double_t mu);
+   Double_t   calcPmu(Double_t qmu_tilde, Double_t sigma, Double_t mu);
+   Double_t   calcPb(Double_t qmu_tilde, Double_t sigma, Double_t mu);
+   Double_t   calcDerCLs(Double_t qmu, Double_t sigma, Double_t mu);
+
 private:
    // band configuration
    Bool_t m_betterBands;
@@ -128,49 +210,6 @@ private:
    // range of m_firstPOI from ModelConfig m_mc
    Double_t m_firstPOIMax;
    Double_t m_firstPOIMin;
-
-public:
-   void init();
-   // main
-   void runAsymptoticsCLs(const char *infile, const char *workspaceName, const char *modelConfigName,
-                          const char *dataName, const char *asimovDataName, std::string folder, std::string mass,
-                          Double_t CL, Bool_t betterBands, Double_t mu_inj = 1);
-
-   // for backwards compatibility
-   void runAsymptoticsCLs(const char *infile, const char *workspaceName = "combWS",
-                          const char *modelConfigName = "ModelConfig", const char *dataName = "combData",
-                          const char *asimovDataName      = "asimovData_0",
-                          const char *conditionalSnapshot = "conditionalGlobs_0",
-                          const char *nominalSnapshot = "nominalGlobs", std::string folder = "test",
-                          std::string mass = "130", Double_t CL = 0.95, Bool_t betterBands = false);
-
-protected:
-   Int_t    minimize(RooNLLVar *nll);
-   Double_t getLimit(RooNLLVar *nll, Double_t initial_guess = 0);
-   void     getLimit(RooNLLVar *nll, Double_t initial_guess, Double_t &upper_limit, Double_t &muhat);
-   Double_t getSigma(RooNLLVar *nll, Double_t mu, Double_t muhat, Double_t &qmu);
-   Double_t getQmu(RooNLLVar *nll, Double_t mu);
-   void     getExpPvalue(Double_t &pb);
-   void     getObsPvalue(Double_t mu, Double_t &pv);
-
-   void       saveSnapshot(RooNLLVar *nll, Double_t mu);
-   void       loadSnapshot(RooNLLVar *nll, Double_t mu);
-   void       doPredictiveFit(RooNLLVar *nll, Double_t mu1, Double_t m2, Double_t mu);
-   RooNLLVar *createNLL(RooDataSet *_data);
-   Double_t   getNLL(RooNLLVar *nll);
-   Double_t   findCrossing(Double_t sigma_obs, Double_t sigma, Double_t muhat);
-   void       setMu(Double_t mu);
-   Double_t   getQmu95_brute(Double_t sigma, Double_t mu);
-   Double_t   getQmu95(Double_t sigma, Double_t mu);
-   Double_t   calcCLs(Double_t qmu_tilde, Double_t sigma, Double_t mu);
-   Double_t   calcPmu(Double_t qmu_tilde, Double_t sigma, Double_t mu);
-   Double_t   calcPb(Double_t qmu_tilde, Double_t sigma, Double_t mu);
-   Double_t   calcDerCLs(Double_t qmu, Double_t sigma, Double_t mu);
-
-   void doExpected(Bool_t isExpected);
-   void doPvalues(Bool_t calc);
-   void doBetterBands(Bool_t isBetterBands);
-   void doInjection(Bool_t injection);
 };
 
 } // namespace EXOSTATS
