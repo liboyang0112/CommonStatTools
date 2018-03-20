@@ -939,7 +939,7 @@ void EXOSTATS::AsymptoticsCLsRunner::setMu(double mu)
 {
    if (mu != mu) {
       cout << "ERROR::POI gave nan. Please intervene." << endl;
-      throw std::runtime_error("POI is NaN");
+      throw std::runtime_error("NaN encountered");
       exit(1);
    }
    if (mu > 0 && m_firstPOI->getMax() < mu) m_firstPOI->setMax(2 * mu);
