@@ -1,9 +1,9 @@
 #include <TROOT.h>
 #include "AsymptoticsCLsRunner.h"
 
-R__LOAD_LIBRARY(Minimization.C +)
-R__LOAD_LIBRARY(AsimovDataMaking.C +)
-R__LOAD_LIBRARY(AsymptoticsCLsRunner.C +)
+R__LOAD_LIBRARY(Minimization.C+)
+R__LOAD_LIBRARY(AsimovDataMaking.C+)
+R__LOAD_LIBRARY(AsymptoticsCLsRunner.C+)
 
 void runAsymptoticsCLs(const char *inputFile, const char *workspaceName, const char *modelConfigName,
                        const char *dataName, TString paramName, Float_t paramValue, TString workspaceTag,
