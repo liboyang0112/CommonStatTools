@@ -43,6 +43,7 @@ void EXOSTATS::AsymptoticsCLsRunner::reset()
    m_doExp               = 1;               // compute expected limit
    m_doObs               = 1 && !m_doBlind; // compute observed limit
    m_doInj               = 0;               // compute expected limit after signal injection
+   m_muInjection         = 1;               // mu value to be used for signal injection
    m_precision           = 0.005;           // % precision in mu that defines iterative cutoff
    m_verbose             = 0;               // 1 = very spammy
    m_usePredictiveFit    = 1;    // experimental, extrapolate best fit nuisance parameters based on previous fit results
@@ -78,24 +79,32 @@ int EXOSTATS::AsymptoticsCLsRunner::minimize(RooNLLVar *nll)
    return EXOSTATS::minimize(nll, m_maxRetries);
 }
 
-void EXOSTATS::AsymptoticsCLsRunner::run(const char *infile, const char *workspaceName, const char *modelConfigName,
-                                         const char *dataName, const char *asimovDataName, string folder, string mass,
-                                         double CL, double mu_inj)
+void EXOSTATS::AsymptoticsCLsRunner::run(const char *inputFile, const char *workspaceName, const char *modelConfigName,
+                                         const char *dataName, const char *paramName, float paramValue,
+                                         TString workspaceTag, TString outputFolder, Double_t CL,
+                                         const char *asimovDataName)
 {
    // check inputs
-   TFile         f(infile);
+   TFile         f(inputFile);
    RooWorkspace *workspace = (RooWorkspace *)f.Get(workspaceName);
    if (!workspace) {
       cout << "ERROR::Workspace: " << workspaceName << " doesn't exist!" << endl;
       return;
    }
 
-   return run(workspace, modelConfigName, dataName, asimovDataName, folder, mass, CL, mu_inj);
+   TTree *tree = computeLimit(workspace, modelConfigName, dataName, paramName, paramValue, CL, asimovDataName);
+
+   const TString blindness   = (m_doBlind) ? "_BLIND" : "";
+   const TString clstring    = TString::Format("CL%2.0f", CL * 100.0);
+   const TString outFileName = outputFolder + "/asymptotics/" + workspaceTag + blindness + clstring + ".root";
+   TFile         f_out(outFileName, "RECREATE");
+   tree->SetDirectory(&f_out);
+   f_out.Write();
 }
 
-void EXOSTATS::AsymptoticsCLsRunner::run(RooWorkspace *workspace, const char *modelConfigName, const char *dataName,
-                                         const char *asimovDataName, string folder, string mass, double CL,
-                                         double mu_inj)
+TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, const char *modelConfigName,
+                                                    const char *dataName, const char *paramName, float paramValue,
+                                                    Double_t CL, const char *asimovDataName)
 {
    TStopwatch timer;
    timer.Start();
@@ -184,7 +193,7 @@ void EXOSTATS::AsymptoticsCLsRunner::run(RooWorkspace *workspace, const char *mo
 
    if (m_doInj) {
       RooDataSet *asimovData_inj = EXOSTATS::makeAsimovData(m_w, modelConfigName, m_conditionalExpected, m_obs_nll, 0,
-                                                            nullptr, nullptr, -999, true, mu_inj);
+                                                            nullptr, nullptr, -999, true, m_muInjection);
 
       int asimovinj_status = m_global_status;
 
@@ -370,11 +379,6 @@ void EXOSTATS::AsymptoticsCLsRunner::run(RooWorkspace *workspace, const char *mo
       cout << "************************" << endl;
    }
 
-   system(("mkdir -vp root-files/" + folder).c_str());
-
-   stringstream fileName;
-   fileName << "root-files/" << folder << "/" << mass << ".root";
-   TFile  fout(fileName.str().c_str(), "recreate");
    TTree *tree = new TTree("stats", "runAsymptoticsCLs");
 
    Float_t tree_point;
@@ -392,6 +396,7 @@ void EXOSTATS::AsymptoticsCLsRunner::run(RooWorkspace *workspace, const char *mo
    //  Float_t tree_obs_lowerlimit;
    //  Float_t tree_obs_lowerlimit_err;
    Float_t tree_obs_upperlimit;
+   Float_t tree_inj_upperlimit;
    // Float_t tree_obs_upperlimit_err;
    Float_t tree_exp_upperlimit;
    Float_t tree_exp_upperlimit_plus1;
@@ -402,7 +407,7 @@ void EXOSTATS::AsymptoticsCLsRunner::run(RooWorkspace *workspace, const char *mo
    Float_t tree_muhat_exp;
    Float_t tree_fit_status;
 
-   tree->Branch("point", &tree_point, "point/F");
+   tree->Branch(paramName, &tree_point, paramName + "/F");
    //  tree->Branch("null_pvalue", &tree_null_pvalue, "null_pvalue/F");
    //  tree->Branch("null_pvalue_err", &tree_null_pvalue_err, "null_pvalue_err/F");
    //  tree->Branch("alt_pvalue", &tree_alt_pvalue, "alt_pvalue/F");
@@ -417,6 +422,7 @@ void EXOSTATS::AsymptoticsCLsRunner::run(RooWorkspace *workspace, const char *mo
    //  tree->Branch("obs_lowerlimit", &tree_obs_lowerlimit, "obs_lowerlimit/F");
    // tree->Branch("obs_lowerlimit_err", &tree_obs_lowerlimit_err, "obs_lowerlimit_err/F");
    tree->Branch("obs_upperlimit", &tree_obs_upperlimit, "obs_upperlimit/F");
+   tree->Branch("inj_upperlimit", &tree_inj_upperlimit, "inj_upperlimit/F");
    // tree->Branch("obs_upperlimit_err", &tree_obs_upperlimit_err, "obs_upperlimit_err/F");
    tree->Branch("exp_upperlimit", &tree_exp_upperlimit, "exp_upperlimit/F");
    tree->Branch("exp_upperlimit_plus1", &tree_exp_upperlimit_plus1, "exp_upperlimit_plus1/F");
@@ -427,7 +433,7 @@ void EXOSTATS::AsymptoticsCLsRunner::run(RooWorkspace *workspace, const char *mo
    tree->Branch("mu_hat_obs", &tree_muhat_obs, "mu_hat_obs/F");
    tree->Branch("mu_hat_exp", &tree_muhat_exp, "mu_hat_exp/F");
 
-   tree_point        = atof(mass.c_str());
+   tree_point        = paramValue;
    tree_CLb_med      = med_CLb;
    tree_pb_med       = 1 - med_CLb;
    tree_CLs_med      = med_CLs;
@@ -440,6 +446,7 @@ void EXOSTATS::AsymptoticsCLsRunner::run(RooWorkspace *workspace, const char *mo
    //  tree_obs_lowerlimit = xxx;
    //  tree_obs_lowerlimit_err = kv.second.obs_lowerlimit_err;
    tree_obs_upperlimit = obs_limit;
+   tree_inj_upperlimit = inj_limit;
    //  tree_obs_upperlimit_err = -1;//kv.second.obs_upperlimit_err;
    tree_exp_upperlimit = med_limit;
 
@@ -453,11 +460,10 @@ void EXOSTATS::AsymptoticsCLsRunner::run(RooWorkspace *workspace, const char *mo
    tree_fit_status = m_global_status;
    tree->Fill();
 
-   fout.Write();
-   fout.Close();
-
    cout << "Finished with " << m_nrMinimize << " calls to minimize(nll)" << endl;
    timer.Print();
+
+   return tree;
 }
 
 double EXOSTATS::AsymptoticsCLsRunner::getLimit(RooNLLVar *nll, double initial_guess)
@@ -1341,6 +1347,11 @@ void EXOSTATS::AsymptoticsCLsRunner::setInjection(Bool_t value)
    m_doInj = value;
 }
 
+void EXOSTATS::AsymptoticsCLsRunner::setInjectionStrength(Double_t value)
+{
+   m_muInjection = value;
+}
+
 void EXOSTATS::AsymptoticsCLsRunner::setPrecision(Double_t value)
 {
    m_precision = value;
@@ -1436,6 +1447,11 @@ Bool_t EXOSTATS::AsymptoticsCLsRunner::getInjection()
    return m_doInj;
 }
 
+Double_t EXOSTATS::AsymptoticsCLsRunner::getInjectionStrength()
+{
+   return m_muInjection;
+}
+
 Double_t EXOSTATS::AsymptoticsCLsRunner::getPrecision()
 {
    return m_precision;
@@ -1482,6 +1498,7 @@ void EXOSTATS::AsymptoticsCLsRunner::printOptionValues()
    cout << "  - doExp is set to " << m_doExp << endl;
    cout << "  - doObs is set to " << m_doObs << endl;
    cout << "  - doInj is set to " << m_doInj << endl;
+   cout << "  - muInjection is set to " << m_muInjection << endl;
    cout << "  - precision is set to " << m_precision << endl;
    cout << "  - verbose is set to " << m_verbose << endl;
    cout << "  - usePredictiveFit is set to " << m_usePredictiveFit << endl;

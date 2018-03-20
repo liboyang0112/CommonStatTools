@@ -91,11 +91,14 @@ public:
 
    void reset();
 
-   // main
-   void run(const char *infile, const char *workspaceName, const char *modelConfigName, const char *dataName,
-            const char *asimovDataName, std::string folder, std::string mass, Double_t CL, Double_t mu_inj = 1);
-   void run(RooWorkspace *workspace, const char *modelConfigName, const char *dataName, const char *asimovDataName,
-            std::string folder, std::string mass, Double_t CL, Double_t mu_inj = 1);
+   // standalone-user-friendly function
+   void run(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName,
+            const char *paramName, float paramValue, TString workspaceTag, TString outputFolder, Double_t CL = 0.95,
+            const char *asimovDataName = 0);
+
+   // main function
+   TTree *computeLimit(RooWorkspace *workspace, const char *modelConfigName, const char *dataName,
+                       const char *paramName, float paramValue, Double_t CL, const char *asimovDataName);
 
 public:
    void     setBetterBands(Bool_t value);
@@ -111,6 +114,7 @@ public:
    void     setExpected(Bool_t value);
    void     setObserved(Bool_t value);
    void     setInjection(Bool_t value);
+   void     setInjectionStrength(Float_t value);
    void     setPrecision(Double_t value);
    void     setVerbose(Bool_t value);
    void     setUsePredictiveFit(Bool_t value);
@@ -130,6 +134,7 @@ public:
    Bool_t   getExpected();
    Bool_t   getObserved();
    Bool_t   getInjection();
+   Double_t getInjectionStrength();
    Double_t getPrecision();
    Bool_t   getVerbose();
    Bool_t   getUsePredictiveFit();
@@ -177,6 +182,7 @@ private:
    Bool_t      m_doExp;
    Bool_t      m_doObs;
    Bool_t      m_doInj;
+   Double_t    m_muInjection;
    Double_t    m_precision;
    Bool_t      m_verbose;
    Bool_t      m_usePredictiveFit;
