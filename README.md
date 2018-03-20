@@ -17,3 +17,5 @@ Debug level is defined as
   * 3 = error
   * 4 = fatal
   * 5 = silent
+
+Beware in case you have multiple POIs - runAsymptoticsCLs works with the first one only.
