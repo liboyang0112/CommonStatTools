@@ -378,10 +378,12 @@ TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, con
       med_CLsb = 0.5;
       med_CLs  = med_CLsb / (med_CLb + 1e-9);
 
-      getObsPvalue(0, obs_CLb);
-      obs_CLb = 1 - obs_CLb;
-      getObsPvalue(1, obs_CLsb);
-      obs_CLs = obs_CLsb / (obs_CLb + 1e-9);
+      if (m_doObs) {
+         getObsPvalue(0, obs_CLb);
+         obs_CLb = 1 - obs_CLb;
+         getObsPvalue(1, obs_CLsb);
+         obs_CLs = obs_CLsb / (obs_CLb + 1e-9);
+      }
 
       cout << "************************" << endl;
       cout << "*-* Expected Pvalues *-*" << endl;
@@ -392,14 +394,17 @@ TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, con
       cout << "CLs = " << med_CLs << endl;
       cout << "************************" << endl;
       cout << endl;
-      cout << "************************" << endl;
-      cout << "*-* Observed Pvalues *-*" << endl;
-      cout << "************************" << endl;
-      cout << "pb = " << 1 - obs_CLb << endl;
-      cout << "CLb = (1-pb) = " << obs_CLb << endl;
-      cout << "CLsb = " << obs_CLsb << endl;
-      cout << "CLs = " << obs_CLs << endl;
-      cout << "************************" << endl;
+
+      if (m_doObs) {
+         cout << "************************" << endl;
+         cout << "*-* Observed Pvalues *-*" << endl;
+         cout << "************************" << endl;
+         cout << "pb = " << 1 - obs_CLb << endl;
+         cout << "CLb = (1-pb) = " << obs_CLb << endl;
+         cout << "CLsb = " << obs_CLsb << endl;
+         cout << "CLs = " << obs_CLs << endl;
+         cout << "************************" << endl;
+      }
    }
 
    TTree *tree = new TTree("stats", "runAsymptoticsCLs");
