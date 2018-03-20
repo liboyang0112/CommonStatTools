@@ -78,33 +78,31 @@ int EXOSTATS::AsymptoticsCLsRunner::minimize(RooNLLVar *nll)
    return EXOSTATS::minimize(nll, m_maxRetries);
 }
 
-void EXOSTATS::AsymptoticsCLsRunner::run(const char *infile, const char *workspaceName,
-                                                       const char *modelConfigName, const char *dataName,
-                                                       const char *asimovDataName, string folder, string mass,
-                                                       double CL, double mu_inj)
+void EXOSTATS::AsymptoticsCLsRunner::run(const char *infile, const char *workspaceName, const char *modelConfigName,
+                                         const char *dataName, const char *asimovDataName, string folder, string mass,
+                                         double CL, double mu_inj)
 {
-  // check inputs
-  TFile f(infile);
-  m_w = (RooWorkspace *)f.Get(workspaceName);
-  if (!m_w) {
-     cout << "ERROR::Workspace: " << workspaceName << " doesn't exist!" << endl;
-     return;
-  }
+   // check inputs
+   TFile f(infile);
+   m_w = (RooWorkspace *)f.Get(workspaceName);
+   if (!m_w) {
+      cout << "ERROR::Workspace: " << workspaceName << " doesn't exist!" << endl;
+      return;
+   }
 
-  return run(workspace, modelConfigName, dataName, asimovDataName, folder, mass, CL, doBetterBands, mu_inj);
+   return run(workspace, modelConfigName, dataName, asimovDataName, folder, mass, CL, doBetterBands, mu_inj);
 }
 
-void EXOSTATS::AsymptoticsCLsRunner::run(RooWorkspace *workspace,
-                                                       const char *modelConfigName, const char *dataName,
-                                                       const char *asimovDataName, string folder, string mass,
-                                                       double CL, double mu_inj)
+void EXOSTATS::AsymptoticsCLsRunner::run(RooWorkspace *workspace, const char *modelConfigName, const char *dataName,
+                                         const char *asimovDataName, string folder, string mass, double CL,
+                                         double mu_inj)
 {
    TStopwatch timer;
    timer.Start();
 
-   m_w = workspace;
+   m_w           = workspace;
    m_betterBands = doBetterBands;
-   m_target_CLs = 1 - CL;
+   m_target_CLs  = 1 - CL;
 
    if (m_killBelowFatal) RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
    ROOT::Math::MinimizerOptions::SetDefaultMinimizer(m_defaultMinimizer.c_str());
@@ -1302,9 +1300,9 @@ void EXOSTATS::AsymptoticsCLsRunner::setRooFitWarningSuppression(Bool_t value)
 
 void EXOSTATS::AsymptoticsCLsRunner::setBlind(Bool_t value)
 {
-   m_doBlind = value;
+   m_doBlind             = value;
    m_conditionalExpected = m_conditionalExpected && !m_doBlind;
-   m_doObs = m_doObs && !m_doBlind;
+   m_doObs               = m_doObs && !m_doBlind;
 }
 
 void EXOSTATS::AsymptoticsCLsRunner::setConditionalExpected(Bool_t value)
