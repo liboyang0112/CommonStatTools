@@ -1,4 +1,5 @@
 #include <sstream>
+#include <stdexcept>
 #include <Math/MinimizerOptions.h>
 #include <Math/ProbFuncMathCore.h>
 #include <Math/QuantFuncMathCore.h>
@@ -80,7 +81,7 @@ int EXOSTATS::AsymptoticsCLsRunner::minimize(RooNLLVar *nll)
 }
 
 void EXOSTATS::AsymptoticsCLsRunner::run(const char *inputFile, const char *workspaceName, const char *modelConfigName,
-                                         const char *dataName, const char *paramName, float paramValue,
+                                         const char *dataName, TString paramName, float paramValue,
                                          TString workspaceTag, TString outputFolder, Double_t CL,
                                          const char *asimovDataName)
 {
@@ -103,7 +104,7 @@ void EXOSTATS::AsymptoticsCLsRunner::run(const char *inputFile, const char *work
 }
 
 TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, const char *modelConfigName,
-                                                    const char *dataName, const char *paramName, float paramValue,
+                                                    const char *dataName, TString paramName, float paramValue,
                                                     Double_t CL, const char *asimovDataName)
 {
    TStopwatch timer;
@@ -131,7 +132,8 @@ TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, con
    m_mc = (RooStats::ModelConfig *)m_w->obj(modelConfigName);
    if (!m_mc) {
       cout << "ERROR::ModelConfig: " << modelConfigName << " doesn't exist!" << endl;
-      return;
+      throw std::runtime_error("Invalid input");
+      return nullptr;
    }
    m_firstPOI    = (RooRealVar *)m_mc->GetParametersOfInterest()->first();
    m_firstPOIMax = m_firstPOI->getMax();
@@ -145,7 +147,8 @@ TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, con
    m_data = (RooDataSet *)m_w->data(dataName);
    if (!m_data) {
       cout << "ERROR::Dataset: " << dataName << " doesn't exist!" << endl;
-      return;
+      throw std::runtime_error("Invalid input");
+      return nullptr;
    }
 
    // RooAbsPdf* pdf = m_mc->GetPdf();

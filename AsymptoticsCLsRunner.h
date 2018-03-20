@@ -73,7 +73,7 @@ NOTE: The script runs significantly faster when compiled
 
 #include <string>
 #include <map>
-#include <Rtypes.h>
+#include <TString.h>
 
 class RooNLLVar;
 class RooDataSet;
@@ -82,6 +82,7 @@ namespace RooStats {
 class ModelConfig;
 }
 class RooRealVar;
+class TTree;
 
 namespace EXOSTATS {
 class AsymptoticsCLsRunner {
@@ -93,12 +94,12 @@ public:
 
    // standalone-user-friendly function
    void run(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName,
-            const char *paramName, float paramValue, TString workspaceTag, TString outputFolder, Double_t CL = 0.95,
+            TString paramName, float paramValue, TString workspaceTag, TString outputFolder, Double_t CL = 0.95,
             const char *asimovDataName = 0);
 
    // main function
-   TTree *computeLimit(RooWorkspace *workspace, const char *modelConfigName, const char *dataName,
-                       const char *paramName, float paramValue, Double_t CL, const char *asimovDataName);
+   TTree *computeLimit(RooWorkspace *workspace, const char *modelConfigName, const char *dataName, TString paramName,
+                       float paramValue, Double_t CL, const char *asimovDataName);
 
 public:
    void     setBetterBands(Bool_t value);
@@ -114,7 +115,7 @@ public:
    void     setExpected(Bool_t value);
    void     setObserved(Bool_t value);
    void     setInjection(Bool_t value);
-   void     setInjectionStrength(Float_t value);
+   void     setInjectionStrength(Double_t value);
    void     setPrecision(Double_t value);
    void     setVerbose(Bool_t value);
    void     setUsePredictiveFit(Bool_t value);
