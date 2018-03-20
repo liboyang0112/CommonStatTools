@@ -92,9 +92,8 @@ public:
    void reset();
 
    // main
-   void runAsymptoticsCLs(const char *infile, const char *workspaceName, const char *modelConfigName,
-                          const char *dataName, const char *asimovDataName, std::string folder, std::string mass,
-                          Double_t CL, Bool_t betterBands, Double_t mu_inj = 1);
+   void run(const char *infile, const char *workspaceName, const char *modelConfigName, const char *dataName, const char *asimovDataName, std::string folder, std::string mass, Double_t CL, Double_t mu_inj = 1);
+   void run(RooWorkspace *workspace, const char *modelConfigName, const char *dataName, const char *asimovDataName, std::string folder, std::string mass, Double_t CL, Double_t mu_inj = 1);
 
 public:
    void     setBetterBands(Bool_t value);
