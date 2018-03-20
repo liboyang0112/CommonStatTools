@@ -89,7 +89,7 @@ public:
    AsymptoticsCLsRunner();
    ~AsymptoticsCLsRunner();
 
-   void init();
+   void reset();
 
    // main
    void runAsymptoticsCLs(const char *infile, const char *workspaceName, const char *modelConfigName,

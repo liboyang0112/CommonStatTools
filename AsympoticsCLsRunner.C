@@ -20,12 +20,12 @@ using namespace RooFit;
 
 EXOSTATS::AsymptoticsCLsRunner::AsymptoticsCLsRunner()
 {
-   init();
+   reset();
 }
 
 EXOSTATS::AsymptoticsCLsRunner::~AsymptoticsCLsRunner() {}
 
-void EXOSTATS::AsymptoticsCLsRunner::init()
+void EXOSTATS::AsymptoticsCLsRunner::reset()
 {
    // band configuration
    m_betterBands = 1; // (recommendation = 1) improve bands by using a more appropriate asimov dataset for those points
