@@ -12,12 +12,32 @@
 #include <TFile.h>
 #include <TTree.h>
 #include <TMath.h>
+#include <TIterator.h>
 
 #include "AsimovDataMaking.h"
 #include "Minimization.h"
 #include "AsymptoticsCLsRunner.h"
 
 using namespace RooFit;
+
+std::map<TString, Float_t> getParameterValuesMap(RooStats::ModelConfig *mc)
+{
+   std::map<TString, Float_t> result;
+   auto                       np = mc->GetNuisanceParameters();
+   if (np) {
+      auto iter = np->createIterator();
+      auto var  = iter->Next();
+      while (var) {
+         auto rrv = dynamic_cast<RooRealVar *>(var);
+         if (rrv) {
+            result[rrv->GetName()] = (Float_t)rrv->getVal();
+         }
+         var = iter->Next();
+      }
+   }
+
+   return result;
+}
 
 EXOSTATS::AsymptoticsCLsRunner::AsymptoticsCLsRunner()
 {
@@ -51,7 +71,7 @@ void EXOSTATS::AsymptoticsCLsRunner::reset()
    m_extrapolateSigma    = 1;    // experimantal, extrapolate sigma based on previous fits
    m_maxRetries          = 3;    // number of minimize(fcn) retries before giving up
    m_doPvals             = true; // perform pvalue calculation
-   m_NumCPU              = 4; // for the parallelisation of the likelihood calculation 
+   m_NumCPU              = 4;    // for the parallelisation of the likelihood calculation
 
    // don't touch!
    m_map_nll_muhat.clear();
@@ -202,9 +222,10 @@ TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, con
    double med_limit = -1;
    double med_muhat = -1;
 
+   std::map<TString, Float_t> np_hatmed_map;
    if (m_doExp) {
       cout << "Calculating Expected Limit" << endl;
-      getLimit(m_asimov_0_nll, 1.0, med_limit, med_muhat);
+      getLimit(m_asimov_0_nll, 1.0, med_limit, med_muhat, np_hatmed_map);
    }
 
    int med_status = m_global_status;
@@ -317,11 +338,12 @@ TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, con
 
    m_w->loadSnapshot("conditionalNuis_0");
    m_firstPOI->setRange(m_firstPOIMin, m_firstPOIMax);
-   double obs_limit = -1;
-   double obs_muhat = -1;
+   double                     obs_limit = -1;
+   double                     obs_muhat = -1;
+   std::map<TString, Float_t> np_hat_map;
    if (m_doObs) {
       cout << "Calculating Observed Limit" << endl;
-      getLimit(m_obs_nll, med_limit, obs_limit, obs_muhat);
+      getLimit(m_obs_nll, med_limit, obs_limit, obs_muhat, np_hat_map);
    }
    int obs_status = m_global_status;
 
@@ -462,6 +484,15 @@ TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, con
    tree->Branch("mu_hat_obs", &tree_muhat_obs, "mu_hat_obs/F");
    tree->Branch("mu_hat_exp", &tree_muhat_exp, "mu_hat_exp/F");
 
+   for (auto &kv : np_hat_map) {
+      const TString param = "param_" + kv.first + "_hat";
+      tree->Branch(param, &kv.second, param + "/F");
+   }
+   for (auto &kv : np_hatmed_map) {
+      const TString param = "param_" + kv.first + "_med";
+      tree->Branch(param, &kv.second, param + "/F");
+   }
+
    tree_point        = paramValue;
    tree_CLb_med      = med_CLb;
    tree_pb_med       = 1 - med_CLb;
@@ -497,12 +528,14 @@ TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, con
 
 double EXOSTATS::AsymptoticsCLsRunner::getLimit(RooNLLVar *nll, double initial_guess)
 {
-   double upperLimit, muhat;
-   getLimit(nll, initial_guess, upperLimit, muhat);
+   double                     upperLimit, muhat;
+   std::map<TString, Float_t> dummy;
+   getLimit(nll, initial_guess, upperLimit, muhat, dummy);
    return upperLimit;
 }
 
-void EXOSTATS::AsymptoticsCLsRunner::getLimit(RooNLLVar *nll, double initial_guess, double &upper_limit, double &mu_hat)
+void EXOSTATS::AsymptoticsCLsRunner::getLimit(RooNLLVar *nll, double initial_guess, double &upper_limit, double &mu_hat,
+                                              std::map<TString, Float_t> &np_hat_map)
 {
 
    upper_limit = -1;
@@ -519,10 +552,12 @@ void EXOSTATS::AsymptoticsCLsRunner::getLimit(RooNLLVar *nll, double initial_gue
       m_firstPOI->setConstant(1);
    }
 
-   double muhat;
+   double                     muhat;
+   std::map<TString, Float_t> nphatmap;
    if (m_map_nll_muhat.find(nll) == m_map_nll_muhat.end()) {
       double nll_val = getNLL(nll);
       muhat          = m_firstPOI->getVal();
+      nphatmap       = getParameterValuesMap(m_mc);
       saveSnapshot(nll, muhat);
       m_map_muhat[nll] = muhat;
       if (muhat < 0 && m_doTilde) {
@@ -533,7 +568,8 @@ void EXOSTATS::AsymptoticsCLsRunner::getLimit(RooNLLVar *nll, double initial_gue
 
       m_map_nll_muhat[nll] = nll_val;
    } else {
-      muhat = m_map_muhat[nll];
+      muhat    = m_map_muhat[nll];
+      nphatmap = getParameterValuesMap(m_mc);
    }
 
    if (muhat < 0.1 || initial_guess != 0) setMu(initial_guess);
@@ -653,6 +689,7 @@ void EXOSTATS::AsymptoticsCLsRunner::getLimit(RooNLLVar *nll, double initial_gue
    cout << endl;
    upper_limit = mu_guess;
    mu_hat      = muhat;
+   np_hat_map  = nphatmap;
 
    return;
 }
@@ -867,7 +904,8 @@ RooNLLVar *EXOSTATS::AsymptoticsCLsRunner::createNLL(RooDataSet *_data)
    const RooArgSet *nuis = m_mc->GetNuisanceParameters();
    RooNLLVar *      nll;
    if (nuis != 0)
-      nll = (RooNLLVar *)m_mc->GetPdf()->createNLL(*_data, Constrain(*nuis), NumCPU(m_NumCPU, 3), Optimize(2), Offset(true));
+      nll = (RooNLLVar *)m_mc->GetPdf()->createNLL(*_data, Constrain(*nuis), NumCPU(m_NumCPU, 3), Optimize(2),
+                                                   Offset(true));
    else
       nll = (RooNLLVar *)m_mc->GetPdf()->createNLL(*_data, NumCPU(m_NumCPU, 3), Optimize(2), Offset(true));
    return nll;

@@ -149,7 +149,8 @@ public:
 protected:
    Int_t    minimize(RooNLLVar *nll);
    Double_t getLimit(RooNLLVar *nll, Double_t initial_guess = 0);
-   void     getLimit(RooNLLVar *nll, Double_t initial_guess, Double_t &upper_limit, Double_t &muhat);
+   void     getLimit(RooNLLVar *nll, Double_t initial_guess, Double_t &upper_limit, Double_t &muhat,
+                     std::map<TString, Float_t> &np_hat_map);
    Double_t getSigma(RooNLLVar *nll, Double_t mu, Double_t muhat, Double_t &qmu);
    Double_t getQmu(RooNLLVar *nll, Double_t mu);
    void     getExpPvalue(Double_t &pb);
