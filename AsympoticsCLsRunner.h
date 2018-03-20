@@ -87,47 +87,47 @@ namespace EXOSTATS {
 class AsymptoticsCLsRunner {
 private:
    // band configuration
-   Bool_t betterBands;
-   Bool_t betterNegativeBands;
-   Bool_t profileNegativeAtZero;
+   Bool_t m_betterBands;
+   Bool_t m_betterNegativeBands;
+   Bool_t m_profileNegativeAtZero;
    // other configuration
-   std::string defaultMinimizer;
-   int         defaultPrintLevel;
-   int         defaultStrategy;
-   Bool_t      killBelowFatal;
-   Bool_t      doBlind;
-   Bool_t      conditionalExpected;
-   Bool_t      doTilde;
-   Bool_t      doExp;
-   Bool_t      doObs;
-   Bool_t      doInj;
-   Double_t    precision;
-   Bool_t      verbose;
-   Bool_t      usePredictiveFit;
-   Bool_t      extrapolateSigma;
-   int         maxRetries;
-   Bool_t      doPvals;
+   std::string m_defaultMinimizer;
+   int         m_defaultPrintLevel;
+   int         m_defaultStrategy;
+   Bool_t      m_killBelowFatal;
+   Bool_t      m_doBlind;
+   Bool_t      m_conditionalExpected;
+   Bool_t      m_doTilde;
+   Bool_t      m_doExp;
+   Bool_t      m_doObs;
+   Bool_t      m_doInj;
+   Double_t    m_precision;
+   Bool_t      m_verbose;
+   Bool_t      m_usePredictiveFit;
+   Bool_t      m_extrapolateSigma;
+   int         m_maxRetries;
+   Bool_t      m_doPvals;
 
    // don't touch!
-   std::map<RooNLLVar *, Double_t>                     map_nll_muhat;
-   std::map<RooNLLVar *, Double_t>                     map_muhat;
-   std::map<RooDataSet *, RooNLLVar *>                 map_data_nll;
-   std::map<RooNLLVar *, std::string>                  map_snapshots;
-   std::map<RooNLLVar *, std::map<Double_t, Double_t>> map_nll_mu_sigma;
-   RooWorkspace *                                      w;
-   RooStats::ModelConfig *                             mc;
-   RooDataSet *                                        data;
-   RooRealVar *                                        firstPOI;
-   RooNLLVar *                                         asimov_0_nll;
-   RooNLLVar *                                         asimov_1_nll;
-   RooNLLVar *                                         obs_nll;
-   int                                                 nrMinimize;
-   int                                                 direction;
-   int                                                 global_status;
-   Double_t                                            target_CLs;
-   // range of firstPOI from ModelConfig mc
-   Double_t firstPOIMax;
-   Double_t firstPOIMin;
+   std::map<RooNLLVar *, Double_t>                     m_map_nll_muhat;
+   std::map<RooNLLVar *, Double_t>                     m_map_muhat;
+   std::map<RooDataSet *, RooNLLVar *>                 m_map_data_nll;
+   std::map<RooNLLVar *, std::string>                  m_map_snapshots;
+   std::map<RooNLLVar *, std::map<Double_t, Double_t>> m_map_nll_mu_sigma;
+   RooWorkspace *                                      m_w;
+   RooStats::ModelConfig *                             m_mc;
+   RooDataSet *                                        m_data;
+   RooRealVar *                                        m_firstPOI;
+   RooNLLVar *                                         m_asimov_0_nll;
+   RooNLLVar *                                         m_asimov_1_nll;
+   RooNLLVar *                                         m_obs_nll;
+   int                                                 m_nrMinimize;
+   int                                                 m_direction;
+   int                                                 m_global_status;
+   Double_t                                            m_target_CLs;
+   // range of m_firstPOI from ModelConfig m_mc
+   Double_t m_firstPOIMax;
+   Double_t m_firstPOIMin;
 
 public:
    void init();
