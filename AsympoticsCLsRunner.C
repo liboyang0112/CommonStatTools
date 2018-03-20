@@ -83,14 +83,14 @@ void EXOSTATS::AsymptoticsCLsRunner::run(const char *infile, const char *workspa
                                          double CL, double mu_inj)
 {
    // check inputs
-   TFile f(infile);
-   m_w = (RooWorkspace *)f.Get(workspaceName);
-   if (!m_w) {
+   TFile         f(infile);
+   RooWorkspace *workspace = (RooWorkspace *)f.Get(workspaceName);
+   if (!workspace) {
       cout << "ERROR::Workspace: " << workspaceName << " doesn't exist!" << endl;
       return;
    }
 
-   return run(workspace, modelConfigName, dataName, asimovDataName, folder, mass, CL, doBetterBands, mu_inj);
+   return run(workspace, modelConfigName, dataName, asimovDataName, folder, mass, CL, mu_inj);
 }
 
 void EXOSTATS::AsymptoticsCLsRunner::run(RooWorkspace *workspace, const char *modelConfigName, const char *dataName,
@@ -100,9 +100,10 @@ void EXOSTATS::AsymptoticsCLsRunner::run(RooWorkspace *workspace, const char *mo
    TStopwatch timer;
    timer.Start();
 
-   m_w           = workspace;
-   m_betterBands = doBetterBands;
-   m_target_CLs  = 1 - CL;
+   m_w          = workspace;
+   m_target_CLs = 1 - CL;
+
+   printOptionValues();
 
    if (m_killBelowFatal) RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
    ROOT::Math::MinimizerOptions::SetDefaultMinimizer(m_defaultMinimizer.c_str());
@@ -1463,4 +1464,30 @@ Int_t EXOSTATS::AsymptoticsCLsRunner::getMaxRetries()
 Bool_t EXOSTATS::AsymptoticsCLsRunner::getCalculatePvalues()
 {
    return m_doPvals;
+}
+
+void EXOSTATS::AsymptoticsCLsRunner::printOptionValues()
+{
+   cout << "Settings:" << endl;
+   cout << "  - betterBands is set to " << m_betterBands << endl;
+   cout << "  - betterNegativeBands is set to " << m_betterNegativeBands << endl;
+   cout << "  - profileNegativeAtZero is set to " << m_profileNegativeAtZero << endl;
+   cout << "  - defaultMinimizer is set to " << m_defaultMinimizer << endl;
+   cout << "  - defaultPrintLevel is set to " << m_defaultPrintLevel << endl;
+   cout << "  - defaultStrategy is set to " << m_defaultStrategy << endl;
+   cout << "  - killBelowFatal is set to " << m_killBelowFatal << endl;
+   cout << "  - doBlind is set to " << m_doBlind << endl;
+   cout << "  - conditionalExpected is set to " << m_conditionalExpected << endl;
+   cout << "  - doTilde is set to " << m_doTilde << endl;
+   cout << "  - doExp is set to " << m_doExp << endl;
+   cout << "  - doObs is set to " << m_doObs << endl;
+   cout << "  - doInj is set to " << m_doInj << endl;
+   cout << "  - precision is set to " << m_precision << endl;
+   cout << "  - verbose is set to " << m_verbose << endl;
+   cout << "  - usePredictiveFit is set to " << m_usePredictiveFit << endl;
+   cout << "  - extrapolateSigma is set to " << m_extrapolateSigma << endl;
+   cout << "  - maxRetries is set to " << m_maxRetries << endl;
+   cout << "  - doPvals is set to " << m_doPvals << endl;
+   cout << "  - target_CLs is set to " << m_target_CLs << endl;
+   cout << endl;
 }

@@ -136,6 +136,7 @@ public:
    Bool_t   getExtrapolateSigma();
    Int_t    getMaxRetries();
    Bool_t   getCalculatePvalues();
+   void     printOptionValues();
 
 protected:
    Int_t    minimize(RooNLLVar *nll);
