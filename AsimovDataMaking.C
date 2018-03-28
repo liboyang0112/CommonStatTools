@@ -66,7 +66,7 @@ RooDataSet *EXOSTATS::makeAsimovData(RooWorkspace *w, TString modelConfigName, B
    RooStats::ModelConfig *mc      = (RooStats::ModelConfig *)w->obj(modelConfigName);
    RooAbsPdf *            combPdf = mc->GetPdf();
 
-   int _printLevel = 0;
+   int _printLevel = debugLevel;
 
    stringstream muStr;
    muStr << setprecision(5);
