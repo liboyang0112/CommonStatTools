@@ -15,6 +15,8 @@ void runAsymptoticsCLs(const char *inputFile, const char *workspaceName, const c
    gROOT->ProcessLine(".L AsimovDataMaking.C+");
    gROOT->ProcessLine(".L AsymptoticsCLsRunner.C+");
 
+   system("mkdir -vp " + outputFolder);
+
    EXOSTATS::AsymptoticsCLsRunner limitRunner;
    limitRunner.setBlind(keepDataBlind);
    limitRunner.setInjection(doInjection);
