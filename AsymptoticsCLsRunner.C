@@ -120,7 +120,7 @@ void EXOSTATS::AsymptoticsCLsRunner::run(const char *inputFile, const char *work
    const TString blindness     = (m_doBlind) ? "_BLIND" : "";
    const TString clstring      = TString::Format("_CL%2.0f", CL * 100.0);
    const TString fullOutFolder = outputFolder + "/asymptotics/";
-   system(("mkdir -vp " + fullOutFolder).Data());
+   system("mkdir -vp " + fullOutFolder);
    const TString outFileName = fullOutFolder + workspaceTag + blindness + clstring + ".root";
    TFile         f_out(outFileName, "RECREATE");
    tree->SetDirectory(&f_out);
@@ -459,7 +459,7 @@ TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, con
    Float_t tree_muhat_exp;
    Float_t tree_fit_status;
 
-   tree->Branch(paramName, &tree_point, paramName + "/F");
+   tree->Branch(paramName, &tree_point);
    //  tree->Branch("null_pvalue", &tree_null_pvalue, "null_pvalue/F");
    //  tree->Branch("null_pvalue_err", &tree_null_pvalue_err, "null_pvalue_err/F");
    //  tree->Branch("alt_pvalue", &tree_alt_pvalue, "alt_pvalue/F");

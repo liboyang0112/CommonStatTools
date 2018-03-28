@@ -11,8 +11,6 @@ void runAsymptoticsCLs(const char *inputFile, const char *workspaceName, const c
                        const char *asimovDataName = "asimovData_0", Bool_t doInjection = kFALSE,
                        Float_t muInjection = 1, Int_t debugLevel = 2)
 {
-   system("mkdir -vp " + outputFolder);
-
    EXOSTATS::AsymptoticsCLsRunner limitRunner;
    limitRunner.setBlind(keepDataBlind);
    limitRunner.setInjection(doInjection);
