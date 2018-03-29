@@ -13,3 +13,7 @@ CL=0.90
 
 root -b -q runAsymptoticsCLs.C\(\"$WORKSPACEFILE\",\"$WORKSPACENAME\",\"$MODELCONFIGNAME\",\"$DATASETNAME\",\"$PARAMNAME\",$PARAMVALUE,\"$WORKSPACETAG\",\"$OUTPUTFOLDER\",$DOBLIND,$CL\)
 root -b -q runSig.C\(\"$WORKSPACEFILE\",\"$WORKSPACENAME\",\"$MODELCONFIGNAME\",\"$DATASETNAME\",\"$PARAMNAME\",$PARAMVALUE,\"$WORKSPACETAG\",\"$OUTPUTFOLDER\",$DOBLIND\)
+root -b -q getGlobalP0.C\(3.4,2\)
+python compareHistos.py -o $WORKSPACEFILE -n $WORKSPACEFILE
+python obtainHistosFromWS.py -i $WORKSPACEFILE -o validation_histos.root
+#root -b -q getCorrMatrix.C\(\)
