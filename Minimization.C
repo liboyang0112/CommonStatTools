@@ -8,14 +8,14 @@
 #include "Minimization.h"
 
 int EXOSTATS::minimize(RooNLLVar *nll, Int_t maxRetries, RooWorkspace *w, TString mu0Snapshot, TString nominalSnapshot,
-                       Int_t debugLevel)
+                       Int_t debugLevel, Bool_t saveFitResult = kFALSE, RooFitResult *fitResult = nullptr)
 {
    RooAbsReal *fcn = (RooAbsReal *)nll;
-   return EXOSTATS::minimize(fcn, maxRetries, w, mu0Snapshot, nominalSnapshot, debugLevel);
+   return EXOSTATS::minimize(fcn, maxRetries, w, mu0Snapshot, nominalSnapshot, debugLevel, saveFitResult, fitResult);
 }
 
 int EXOSTATS::minimize(RooAbsReal *fcn, Int_t maxRetries, RooWorkspace *w, TString mu0Snapshot, TString nominalSnapshot,
-                       Int_t debugLevel)
+                       Int_t debugLevel, Bool_t saveFitResult = kFALSE, RooFitResult *fitResult = nullptr)
 {
    static int nrItr = 0;
    if (debugLevel == 0) {
@@ -121,5 +121,11 @@ int EXOSTATS::minimize(RooAbsReal *fcn, Int_t maxRetries, RooWorkspace *w, TStri
 
    if (nrItr != 0) cout << "Successful fit" << endl;
    nrItr = 0;
+
+   // save
+   if (saveFitResult) {
+     fitResult = minim.save();
+   }
+
    return status;
 }
