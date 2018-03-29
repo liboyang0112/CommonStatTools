@@ -36,20 +36,20 @@ public:
 
 // string & output formatting
 
-void printTableBegin(FILE *outfile)
+std::vector<TString> getTokens(TString line, TString delim)
 {
-   fputs("\\documentclass{article}\n\\usepackage[margin=0.5in]{geometry}\n", outfile);
-   fputs("\\begin{document}\n\n\\begin{table}\n\\begin{center}\n\\setlength{\\tabcolsep}{0.0pc}\n", outfile);
-   fputs("\\begin{tabular*}{\\textwidth}{@{\\extracolsep{\\fill}}lccccc}\n ", outfile);
-   fputs("\\noalign{\\smallskip}\\hline\\noalign{\\smallskip}\n", outfile);
-   fputs("{\\bf Systematic} & SR & CR1mu & CR2mu & CR1e & CR2e \\\\ \n", outfile);
-   fputs("\\noalign{\\smallskip}\\hline\\noalign{\\smallskip}\n\n", outfile);
-}
+   std::vector<TString> vtokens;
+   TObjArray* tokens = TString(line).Tokenize(delim); //delimiters
+   if (tokens->GetEntriesFast()) {
+      TIter iString(tokens);
+      TObjString* os = 0;
+      while ((os = (TObjString*)iString())) {
+         vtokens.push_back(os->GetString().Data());
+      }
+   }
+   delete tokens;
 
-void printTableEnd(FILE *outfile)
-{
-   fputs("\\\\ \\hline\\noalign{\\smallskip}\n\\end{tabular*}\n\\end{center}\n\\end{table}\n\\end{document}\n\n\n",
-         outfile);
+   return vtokens;
 }
 
 TString join(TString separator, std::vector<TString> vec)
@@ -313,66 +313,27 @@ RooFitResult *fitPdfInRegions(RooWorkspace *w, std::vector<TString> regions, boo
    return fitResult;
 }
 
-void getSystTable(void)
+void getSystTable(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName, TString workspaceTag, TString outputFolder, TString evaluationRegions, TString fitRegions)
 {
-   // a test function
-   // to produce simple, easy-to-understand inputs:
-   //  prepareHistFactor
-   //  hist2workspace config/example.xml
-   // TFile *f = TFile::Open("results/example_combined_GaussExample_model.root");
+   TFile *       f = TFile::Open(inputFile);
+   RooWorkspace *w = dynamic_cast<RooWorkspace *>(f->Get(workspaceName));
 
-   ///////////////
-   // SETUP     //
-   ///////////////
-   //  TString fullfitblind =
-   //  "../HistFitter/results/SR700_Unblind_MJ135_independent/BkgOnly_L3p21ifb_combined_NormalMeasurement_model.root";
-   TString fullfitblind = "/afs/cern.ch/user/e/etolley/work/public/MonoJet/workspaces/"
-                          "testSimplifiedShapeFit_7Bins_Unblind_MJ135_DMA_750_10_gq0p25/"
-                          "BkgOnly_L3p21ifb_combined_NormalMeasurement_model.root";
-   TFile *       f = TFile::Open(fullfitblind);
-   RooWorkspace *w = dynamic_cast<RooWorkspace *>(f->Get("combined"));
+   FILE *outfile = fopen(outputFolder + "/" + workspaceTag + "_systtable_" + ".tex", "w"); // file for tex output
 
-   // define binning, sample, and CR/SR configuration
-   const std::vector<TString> low_bin_edges = {"250", "300", "350", "400", "500", "600", "700"};
-   //    const std::vector<TString> low_bin_edges = {"700"};
-   const std::vector<TString> samples = {"Znunu",   "Wmunu", "Wenu",    "Wtaunu", "Zmumu",   "Zee",
-                                         "Ztautau", "top",   "diboson", "NCB",    "multijet"};
-   const std::vector<TString> CRs     = {"CR1mu", "CR2mu", "CR1e"}; //, "CR2e"};
-   const TString              SR      = "SR";
-   // const std::vector<TString> CRs = { "CR1mu150", "CR2mu150", "CR1e150"};
-   // const TString SR = "VR150";
-
-   FILE *outfile = fopen("out_fit.tex", "w"); // file for tex output
-
-   ///////////////////
-   // END SETUP     //
-   ///////////////////
-
-   // automatically build fit regions and eval regions
-   // fit region = all bins of all CRs
-   // eval region = all bins of a given SR or CR
-   std::vector<TString>                    fitRegions;
-   std::map<TString, std::vector<TString>> evalRegions;
-   for (TString bin_edge : low_bin_edges) {
-      for (TString CR : CRs) {
-         fitRegions.push_back(CR + "_" + bin_edge + "_cuts");
-         evalRegions[CR].push_back(CR + "_" + bin_edge + "_cuts");
-      }
-      evalRegions[SR].push_back(SR + "_" + bin_edge + "_cuts");
-   }
+   std::vector<TString>                    fitRegionsVec = getTokens(fitRegions, ",");
+   std::map<TString, std::vector<TString>> evalRegionsVec = getTokens(evaluationRegions, ",");
 
    // this marvellous object is what allows us to know the yield for a given sample (or combination of samples) in a
    // region taking into account all scale factors, systematics...
    map<TString, RooFormulaVar *> impactRFV;
-   impactRFV[SR] = getComponent(w, samples, evalRegions[SR]);
-   for (TString CR : CRs) impactRFV[CR] = getComponent(w, samples, evalRegions[CR]);
+   for (auto reg: evalRegionsVec) impactRFV[reg] = getComponent(w, samples, reg);
 
-   // list of NPs (actually it can include more than the usual NPs)
-   std::vector<TString> NPs = getFreeParameters(w); // VALERIO: contiene anche i mu
+   // list of NPs (actually it can include more than the usual NPs: it contains the signal strength!)
+   std::vector<TString> NPs = getFreeParameters(w);
 
    // save state-of-the-art pre-fit parameter settings
-   const TString snapBeforeFit = "pippo"; // sigh
-   w->saveSnapshot(snapBeforeFit, *w->pdf("simPdf")->getParameters(*w->data("obsData")));
+   const TString snapBeforeFit = "adummyname"; // sigh
+   w->saveSnapshot(snapBeforeFit, *w->pdf("simPdf")->getParameters(*w->data(dataName));
 
    std::stringstream myCout; // let's print everything at the end of the job
 
@@ -384,19 +345,16 @@ void getSystTable(void)
 
    // fetch raw SR/CR yields from the likelihood
    map<TString, Double_t> original_impact;
-   original_impact[SR] = impactRFV[SR]->getVal();
-   for (TString CR : CRs) original_impact[CR] = impactRFV[CR]->getVal();
+   for (auto reg: evalRegionsVec) original_impact[reg] = impactRFV[reg]->getVal();
 
-   myCout << "\n\n\nCONSIDERING ONLY SAMPLES " << join(" ", samples) << "\n...IN BINS " << join(" ", low_bin_edges)
-          << std::endl;
+   myCout << "\n\n\nCONSIDERING ONLY SAMPLES " << join(" ", samples) << std::endl;
    myCout << "IMPACTS are given in %, in the form (DOWN, UP) where DOWN means NP goes DOWN by 1 SIGMA, etc"
           << std::endl;
-   myCout << "\nNOMINAL " << SR << " EVENT YIELD: " << original_impact[SR] << std::endl;
-   for (TString CR : CRs) myCout << "NOMINAL " << CR << " EVENT YIELD: " << original_impact[CR] << std::endl;
+   for (auto reg : evalRegionsVec) myCout << "NOMINAL " << reg << " EVENT YIELD: " << original_impact[reg] << std::endl;
    myCout << "\nPRE-FIT IMPACTS" << std::endl;
    myCout << left << setw(46) << setfill(' ') << "SYSTEMATIC";
-   myCout << left << setw(20) << setfill(' ') << SR;
-   for (TString CR : CRs) myCout << left << setw(20) << setfill(' ') << CR;
+   myCout << left << setw(20) << setfill(' ');
+   for (TString reg : evalRegionsVec) myCout << left << setw(20) << setfill(' ') << reg;
    myCout << std::endl;
 
    printTableBegin(outfile);
@@ -407,20 +365,13 @@ void getSystTable(void)
       }
       w->loadSnapshot(snapBeforeFit);
 
-      // fetch impacted SR/CR yields from the likelihood
+      // fetch impacted yields from the likelihood
       map<TString, std::pair<Double_t, Double_t>> nofit_impact;
-      nofit_impact[SR] = getParameterImpactNoFit(np, w, impactRFV[SR], kFALSE);
-      for (TString CR : CRs) nofit_impact[CR] = getParameterImpactNoFit(np, w, impactRFV[CR], kFALSE);
+      for (auto reg : evalRegionsVec) {
+        nofit_impact[reg] = getParameterImpactNoFit(np, w, impactRFV[reg], kFALSE);
 
-      float down = 100. * (nofit_impact[SR].first / original_impact[SR] - 1);
-      float up   = 100. * (nofit_impact[SR].second / original_impact[SR] - 1);
-      myCout << left << setw(46) << setfill(' ') << np;
-      myCout << left << setw(20) << setfill(' ') << "(" + prd(up, 2) + "%, " + prd(down, 2) + "%)";
-      fprintf(outfile, "%s & ($%2.2f$, $%2.2f$)", (np.ReplaceAll("_", "\\_")).Data(), up, down);
-
-      for (TString CR : CRs) {
-         down = 100. * (nofit_impact[CR].first / original_impact[CR] - 1);
-         up   = 100. * (nofit_impact[CR].second / original_impact[CR] - 1);
+           const Float_t down = 100. * (nofit_impact[reg].first / original_impact[reg] - 1);
+         const Float_t up   = 100. * (nofit_impact[reg].second / original_impact[reg] - 1);
          myCout << left << setw(20) << setfill(' ') << "(" + prd(up, 2) + "%, " + prd(down, 2) + "%)";
          fprintf(outfile, " & ($%2.2f$, $%2.2f$)", up, down);
       }
@@ -436,10 +387,11 @@ void getSystTable(void)
 
    // perform pdf fit in specified regions
    w->loadSnapshot(snapBeforeFit);
-   RooFitResult *fitResult = fitPdfInRegions(w, fitRegions, true);
+   RooFitResult *fitResult = fitPdfInRegions(w, fitRegionsVec, true);
    fitResult->Print();
-   const Double_t full_fit_impact = impactRFV[SR]->getVal();
-   const Double_t full_fit_err    = impactRFV[SR]->getPropagatedError(*fitResult);
+   for (auto reg: evalRegionsVec) {
+   const Double_t full_fit_impact = impactRFV[reg]->getVal();
+   const Double_t full_fit_err    = impactRFV[reg]->getPropagatedError(*fitResult);
 
    myCout << "FIT VALUES" << std::endl;
    // save impact and param values
@@ -466,7 +418,7 @@ void getSystTable(void)
    // POST-FIT IMPACT //
    /////////////////////
 
-   myCout << "POST-FIT IMPACTS when fitting only in " << join(" ", fitRegions) << std::endl;
+   myCout << "POST-FIT IMPACTS when fitting only in " << join(" ", fitRegionsVec) << std::endl;
 
    printTableBegin(outfile);
 
@@ -483,14 +435,14 @@ void getSystTable(void)
       w->loadSnapshot(snapBeforeFit);
       w->var(np)->setVal(bestfit[np].val_up);
       w->var(np)->setConstant(kTRUE);
-      fitPdfInRegions(w, fitRegions, kTRUE, kFALSE); // VALERIO's speedup
+      fitPdfInRegions(w, fitRegionsVec, kTRUE, kFALSE); // VALERIO's speedup
       const Double_t plus1_fit_impact = impactRFV[SR]->getVal();
 
       // now, fix this parameter to -1 sigma (TODO: check also -1 absolute?)
       w->loadSnapshot(snapBeforeFit);
       w->var(np)->setVal(bestfit[np].val_down);
       w->var(np)->setConstant(kTRUE);
-      fitPdfInRegions(w, fitRegions, kTRUE, kFALSE); // VALERIO's speedup
+      fitPdfInRegions(w, fitRegionsVec, kTRUE, kFALSE); // VALERIO's speedup
       const Double_t minus1_fit_impact = impactRFV[SR]->getVal();
 
       // finally, evaluate impact!
