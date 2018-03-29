@@ -1,5 +1,7 @@
 Valerio Ippolito - INFN Sezione di Roma
 
+Code contained in files whose name starts with a capital letter are tools; otherwise, they are macros or runners.
+
 To format code based on the `.clang-format` file in this folder:
 
 > make sure clang-format is installed; on MacOSX, do:
