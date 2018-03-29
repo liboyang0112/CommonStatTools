@@ -5,3 +5,6 @@
 
 # ignore ROOT files - we do not want them on git
 *.root
+
+# mysterious file
+.DS_Store
