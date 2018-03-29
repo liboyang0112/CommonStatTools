@@ -1,0 +1,3 @@
+[submodule "StatisticsTools"]
+	path = StatisticsTools
+	url = https://gitlab.cern.ch/atlas-physics/stat/tools/StatisticsTools.git
