@@ -47,16 +47,17 @@ using namespace RooStats;
 void runSig(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName,
             TString paramName, Float_t paramValue, TString workspaceTag, TString outputFolder, Bool_t keepDataBlind,
             const char *asimovDataName = "asimovData_1", const char *conditionalSnapshot = "conditionalGlobs_1",
-            const char *nominalSnapshot = "nominalGlobs")
+            const char *nominalSnapshot = "nominalGlobs", Float_t muInjection = 1, Int_t debugLevel = 2)
 
 {
    const UInt_t nCPU             = 3; // number of CPUs to be used in the fit
-   double       mu_profile_value = 1; // mu value to profile the obs data at before generating the expected
-   bool         doConditional    = 1 && !keepDataBlind; // do conditional expected data
-   bool         doUncap          = 1;                   // uncap p0
-   bool         doInj            = 0; // setup the poi for injection study (zero is faster if you're not)
-   bool         doObs            = 1 && !keepDataBlind; // compute median significance
-   bool         doMedian         = 1;                   // compute observed significance
+   const double       mu_profile_value = 1; // mu value to profile the obs data at before generating the expected
+   const bool         doConditional    = 1 && !keepDataBlind; // do conditional expected data
+   const bool         doUncap          = 1;                   // uncap p0
+   const bool         doInj            = 0; // setup the poi for injection study (zero is faster if you're not)
+   const bool         muInj            = muInjection; // injection value for mu (if injection is requested)
+   const bool         doObs            = 1 && !keepDataBlind; // compute median significance
+   const bool         doMedian         = 1;                   // compute observed significance
 
    TStopwatch timer;
    timer.Start();
@@ -109,18 +110,12 @@ void runSig(const char *inputFile, const char *workspaceName, const char *modelC
    RooNLLVar *obs_nll   = doObs ? (RooNLLVar *)pdf->createNLL(*data, Constrain(nuis_tmp2)) : NULL;
 
    RooDataSet *asimovData1 = (RooDataSet *)ws->data(asimovDataName);
-   RooRealVar *emb         = (RooRealVar *)mc->GetNuisanceParameters()->find("ATLAS_EMB");
-   if (!asimovData1 || (string(inputFile).find("ic10") != string::npos && emb)) {
-      if (emb) emb->setVal(0.7);
+   if (!asimovData1) {
       cout << "Asimov data doesn't exist! Please, allow me to build one for you..." << endl;
       string mu_str, mu_prof_str;
       asimovData1  = EXOSTATS::makeAsimovData(ws, mc->GetName(), doConditional, obs_nll, 1, &mu_str, &mu_prof_str,
                                              mu_profile_value, true);
       condSnapshot = "conditionalGlobs" + mu_prof_str;
-
-      // makeAsimovData(mc, true, ws, mc->GetPdf(), data, 0);
-      // ws->Print();
-      // asimovData1 = (RooDataSet*)ws->data("asimovData_1");
    }
 
    if (!doUncap)
@@ -231,7 +226,7 @@ void runSig(const char *inputFile, const char *workspaceName, const char *modelC
          mu_inj = mu_init; // for the mass point at the inj
       }
       RooDataSet *injData1 =
-         EXOSTATS::makeAsimovData(ws, mc->GetName(), doConditional, obs_nll, 0, &mu_str, &mu_prof_str, 1, true, mu_inj);
+         EXOSTATS::makeAsimovData(ws, mc->GetName(), doConditional, obs_nll, 0, &mu_str, &mu_prof_str, 1, true, mu_inj, debugLevel);
       string globObsSnapName = "conditionalGlobs" + mu_prof_str;
       ws->loadSnapshot(globObsSnapName.c_str());
       RooNLLVar *inj_nll =
