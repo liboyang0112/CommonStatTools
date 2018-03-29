@@ -20,3 +20,10 @@ Debug level is defined as
   * 5 = silent
 
 Beware in case you have multiple POIs - runAsymptoticsCLs works with the first one only.
+
+To run pulls, do:
+```
+cd StatisticsTools
+python submit_pulls.py --help # for interactive running
+./pulls.exe -h # for local running
+```
