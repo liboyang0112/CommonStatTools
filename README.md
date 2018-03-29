@@ -5,12 +5,11 @@ Code contained in files whose name starts with a capital letter are tools; other
 To format code based on the `.clang-format` file in this folder:
 
 > make sure clang-format is installed; on MacOSX, do:
-> ```/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"```
-> ```brew install clang-format```
+> ```/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"; ```brew install clang-format```
 
 ```clang-format -i *.h *.C```
 
-Please make sure you restore the absence of spaces in the `R__LOAD_LIBRARY` macro calls used by runAsymptoticsCLs.C.
+Please make sure you restore the absence of spaces in the `R__LOAD_LIBRARY` macro calls used by macros or runners (e.g. runAsymptoticsCLs.C).
 
 Debug level is defined as
   * 0 = verbose
