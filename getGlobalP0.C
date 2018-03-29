@@ -3,7 +3,7 @@
 #include <RooStats/RooStatsUtils.h>
 
 // macro for global p-value calculation
-Double_t getGlobalP0(Double_t maximumSignificance, UInt_t nCrossings)
+Double_t getGlobalP0(Double_t maximumSignificance, UInt_t nCrossings, Int_t debugLevel = 2)
 {
 
    // reference: https://cds.cern.ch/record/1375842/files/ATL-PHYS-PUB-2011-011.pdf
@@ -20,13 +20,15 @@ Double_t getGlobalP0(Double_t maximumSignificance, UInt_t nCrossings)
 
    const Double_t nsigglobal = RooStats::PValueToSignificance(pglobal);
 
-   std::cout << " Local p-value :  " << p0 << " significance: " << maximumSignificance << std::endl;
-   std::cout << " Global p-value:  " << pglobal << " significance: " << nsigglobal << std::endl;
+   if (debugLevel == 2) {
+     std::cout << " Local p-value :  " << p0 << " significance: " << maximumSignificance << std::endl;
+     std::cout << " Global p-value:  " << pglobal << " significance: " << nsigglobal << std::endl;
+   }
 
    return pglobal;
 }
 
-Double_t getGlobalSignificance(Double_t maximumSignificance, UInt_t nCrossings)
+Double_t getGlobalSignificance(Double_t maximumSignificance, UInt_t nCrossings, Int_t debugLevel = 2)
 {
-   return RooStats::PValueToSignificance(getGlobalP0(maximumSignificance, nCrossings));
+   return RooStats::PValueToSignificance(getGlobalP0(maximumSignificance, nCrossings, debugLevel));
 }
