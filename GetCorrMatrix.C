@@ -1,31 +1,29 @@
-#include <TStyle.h>
+#include <TFile.h>
 #include <RooWorkspace.h>
 #include <RooStats/ModelConfig.h>
 #include <RooRealVar.h>
 #include <RooSimultaneous.h>
-#include <RooAbsData.h>
-#include <RooCategory.h>
 #include <TIterator.h>
 #include <RooCatType.h>
-#include <TMath.h>
-#include <TFile.h>
+#include <RooStats/RooStatsUtils.h>
 #include <TCanvas.h>
 #include <TH2D.h>
+#include <TStyle.h>
+#include <RooCategory.h>
 #include <RooFitResult.h>
-#include <RooStats/RooStatsUtils.h>
 
 #include "Minimization.h"
 
 R__LOAD_LIBRARY(Minimization.C+)
 
-using namespace std;
-using namespace RooFit;
-using namespace RooStats;
-
-void GetCorrMatrix(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName,
-                   TString workspaceTag, TString outputFolder, TString outputFormat = ".png", Bool_t doReduced = kTRUE,
+void getCorrMatrix(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName,
+                   TString workspaceTag, TString outputFolder, TString outputFormat, Bool_t doReduced = kTRUE,
                    Int_t debugLevel = 2)
 {
+
+   using namespace std;
+   using namespace RooFit;
+   using namespace RooStats;
 
    gStyle->SetOptStat(0);
 
@@ -44,26 +42,24 @@ void GetCorrMatrix(const char *inputFile, const char *workspaceName, const char 
 
    while ((tt = (RooCatType *)iter->Next())) {
       cout << "category : " << tt->GetName() << " " << endl;
-      string      ttname = tt->GetName();
+      const TString      ttname = tt->GetName();
       RooAbsPdf * pdftmp = simPdf->getPdf(tt->GetName());
       RooArgSet * obstmp = pdftmp->getObservables(*mc->GetObservables());
       RooAbsData *datatmp =
          data->reduce(Form("%s==%s::%s", channelCat->GetName(), channelCat->GetName(), tt->GetName()));
-      RooRealVar *obs = ((RooRealVar *)obstmp->first());
 
       RooArgSet *      constrainedParams = pdftmp->getParameters(*data);
       const RooArgSet *glbObs            = mc->GetGlobalObservables();
 
       RooRealVar *poi = (RooRealVar *)mc->GetParametersOfInterest()->first();
-      cout << "Constatnt POI " << poi->isConstant() << endl;
-      cout << "Value of POI  " << poi->getVal() << endl;
+      cout << "Constant POI: " << poi->isConstant() << endl;
+      cout << "Value of POI: " << poi->getVal() << endl;
 
       RooStats::RemoveConstantParameters(constrainedParams);
       RooFit::Constrain(*constrainedParams);
 
       RooAbsReal *nll =
          pdftmp->createNLL(*datatmp, Constrain(*constrainedParams), GlobalObservables(*glbObs), Offset(1));
-
       double nllval = nll->getVal();
 
       std::cout << "initial parameters" << std::endl;
@@ -71,10 +67,11 @@ void GetCorrMatrix(const char *inputFile, const char *workspaceName, const char 
 
       std::cout << "INITIAL NLL = " << nllval << std::endl;
 
-      RooFitResult *r;
-      EXOSTATS::minimize(nll, 3, nullptr, "conditionalNuis_0", "nominalNuis", debugLevel, kTRUE, r);
+      RooFitResult *r = nullptr;
 
-      TCanvas *c = new TCanvas(ttname.c_str(), ttname.c_str(), 1300, 1200);
+      EXOSTATS::minimize(nll, 3, nullptr, "", "", debugLevel, kTRUE, &r);
+
+      TCanvas *c = new TCanvas(ttname, ttname, 1300, 1200);
       c->SetRightMargin(0.11);
       c->SetLeftMargin(0.28);
       c->SetBottomMargin(0.25);
@@ -174,7 +171,13 @@ void GetCorrMatrix(const char *inputFile, const char *workspaceName, const char 
       h2ncm->Draw("colz");
       c->Modified();
       c->Update();
-      c->SaveAs(outputFolder + "/" + workspaceTag + "_" + ttname + outputFormat);
+
+      const TString fullOutFolder = outputFolder + "/corrmatrix/";
+      system("mkdir -vp " + fullOutFolder);
+      const TString outFileName = fullOutFolder + workspaceTag + "_corrmatrix_" + ttname + outputFormat;
+
+      c->SaveAs(outFileName);
+      // c->SaveAs( Form( "%s_%s_red.png",inname.c_str(), ttname.c_str() ) );
    }
 
    return;
