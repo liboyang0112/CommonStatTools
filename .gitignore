@@ -1,0 +1,7 @@
+# ignore ROOT intermediate files
+*.d
+*.so
+*.pcm
+
+# ignore ROOT files - we do not want them on git
+*.root
