@@ -13,6 +13,12 @@
 using namespace RooFit;
 using namespace std;
 
+////////////////////////////////////////////////////
+/// \param[in] initial reference to the starting RooArgSet, which contains pointers to RooAbsPdf 
+/// \param[in] final reference to the result RooArgSet
+/// \param[in] obs reference to the RooArgSet containing p.d.f. observables
+/// \param[in] nuis reference to the RooArgSet containing p.d.f. nuisance parameters
+/// \param[in] counter reference to a counter of calls to the function
 void EXOSTATS::unfoldConstraints(RooArgSet &initial, RooArgSet &final, RooArgSet &obs, RooArgSet &nuis, int &counter)
 {
    if (counter > 50) {
@@ -44,6 +50,27 @@ void EXOSTATS::unfoldConstraints(RooArgSet &initial, RooArgSet &final, RooArgSet
    delete itr;
 }
 
+////////////////////////////////////////////////////
+/// \param[in] w pointer to the RooWorkspace containing the likelihood
+/// \param[in] w name of the ModelConfig containing the model specifications
+/// \param[in] doConditional profile nuisance parameters using a conditioning negative log-likelihood
+/// \param[in] conditioning_mll pointer to the negative log-likelihood to be used for profiling, if activated
+/// \param[in] mu_val value of the parameter of interest (POI) at which the Asimov dataset must be created
+/// \param[in] mu_str pointer to a string where \c mu_val will be stored
+/// \param[in] mu_prof_str pointer to a string where the POI value used for profiling will be stored
+/// \param[in] mu_val_profile value of the POI to be used for profiling; if not specified, \c mu_val is used
+/// \param[in] doFit perform the fit
+/// \param[in] mu_injection if > 0, specifies the POI value of the injected signal
+/// \param[in] debugLevel debug level (0 = verbose, 1 = debug, 2 = warning, 3 = error, 4 = fatal, 5 = silent)
+/// \param[out] asimovData Asimov dataset
+///
+/// This function creates an Asimov dataset, given a model. The user can specify both which POI value
+/// should be used for generating the dataset, and which POI value (and likelihood) should be used to 
+/// evaluate the nuisance parameters before the generation is performed.
+///
+/// If \c mu_injection is > 0, a signal will be injected with the specified signal strength instead.
+/// Note that, if the workspace contains a variable called \c ATLAS_norm_muInjection, its value is set to
+/// \c mu_injection and the POI is not changed.
 RooDataSet *EXOSTATS::makeAsimovData(RooWorkspace *w, TString modelConfigName, Bool_t doConditional,
                                      RooNLLVar *conditioning_nll, Double_t mu_val, std::string *mu_str,
                                      std::string *mu_prof_str, Double_t mu_val_profile, Bool_t doFit,
