@@ -17,8 +17,11 @@ as work in progress: there is much room for improvement, feel free to help!
 On lxplus:
 ```
 setupATLAS
+lsetup git
 lsetup ROOT
+lsetup cmake
 git clone https://:@gitlab.cern.ch:8443/vippolit/exostats.git
+cd exostats
 mkdir build
 cd build 
 cmake ..
