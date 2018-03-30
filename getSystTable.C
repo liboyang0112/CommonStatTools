@@ -153,13 +153,14 @@ std::vector<TString> getAllComponentNamesInRegions(TString region, RooAbsPdf *re
 /// \param[in] components list of the components (samples) to be summed up
 /// \param[in] region channel (region) to consider
 /// \param[in] rangeName name of the variable range to be used for the integral (ignored if empty)
+/// \param[in] dataName name of the dataset (used to determine observables)
 /// \param[out] form_frac pointer to the output RooFormulaVar
 ///
 /// For a given list of samples in a region ('components'), we create a \c RooRealSumPdf representing
 /// the sum of the corresponding components, and return its integral in the form of a RooFormulaVar
 /// so that getVal() will tell us the number of events associated to this sum.
 /// A range for the integral can also be specified
-RooFormulaVar *getComponent(RooWorkspace *w, std::vector<TString> components, TString region, TString rangeName = "")
+RooFormulaVar *getComponent(RooWorkspace *w, std::vector<TString> components, TString region, TString rangeName = "", TString dataName = "obsData")
 {
    if (components.size() < 1) {
       throw std::runtime_error("component list is empty");
@@ -170,7 +171,7 @@ RooFormulaVar *getComponent(RooWorkspace *w, std::vector<TString> components, TS
    RooSimultaneous *simPdf = dynamic_cast<RooSimultaneous *>(w->pdf("simPdf")); // name hardcoded in HistFactory
    RooAbsPdf *      regPdf = simPdf->getPdf(region);
 
-   RooAbsData *simData = w->data("obsData"); // name hardcoded in HistFactory
+   RooAbsData *simData = w->data(dataName); // name hardcoded in HistFactory
    RooAbsData *regData = simData->reduce(TString("channelCat==channelCat::" + region)); // name hardcoded in HistFactory
 
    RooRealVar *obs      = dynamic_cast<RooRealVar *>(regPdf->getObservables(regData)->find("obs_x_" + region)); // name hardcoded in HistFactory
@@ -228,11 +229,12 @@ RooFormulaVar *getComponent(RooWorkspace *w, std::vector<TString> components, TS
 /// \param[in] components list of the components (samples) to be summed up
 /// \param[in] regions channels (regions) to consider
 /// \param[in] rangeName name of the variable range to be used for the integral (ignored if empty)
+/// \param[in] dataName name of the dataset (used to determine observables)
 /// \param[out] form_frac pointer to the output RooFormulaVar
 ///
 /// See the single-region version of getComponent() for more details
 RooFormulaVar *getComponent(RooWorkspace *w, std::vector<TString> components, std::vector<TString> regions,
-                            TString rangeName = "")
+                            TString rangeName = "", TString dataName = "obsData")
 {
    RooArgList list;
    TString    form  = "";
@@ -244,7 +246,7 @@ RooFormulaVar *getComponent(RooWorkspace *w, std::vector<TString> components, st
          form += "+ @";
       form += count;
       count++;
-      list.add(*getComponent(w, components, region, rangeName));
+      list.add(*getComponent(w, components, region, rangeName, dataName));
    }
    return new RooFormulaVar("sum_var", form, list);
 }
@@ -317,12 +319,13 @@ std::pair<Double_t, Double_t> getParameterImpactNoFit(TString param, RooWorkspac
 /// Fits the pdf of the HistFactory workspace only in a subset of the available channels (regions)
 ///
 /// \param[in] w pointer to the input RooWorkspace
+/// \param[in] dataName name of the dataset to fit
 /// \param[in] regions vector of names of channels (regions) to be considered in the fit
 /// \param[in] saveResult if set to \c kTRUE, the RooFitResult is returned
 /// \param[in] doMinos if set to \c kTRUE, Minos is run (much slower!)
 ///
 /// To do the job, this function defines a new simultaneous PDF and a new dataset, including only fit regions.
-RooFitResult *fitPdfInRegions(RooWorkspace *w, std::vector<TString> regions, bool saveResult = false,
+RooFitResult *fitPdfInRegions(RooWorkspace *w, TString dataName, std::vector<TString> regions, bool saveResult = false,
                               Bool_t doMinos = kTRUE)
 {
    // TODO: use the better fitting technique used by HistFitter's Util::FitPdf
@@ -332,7 +335,7 @@ RooFitResult *fitPdfInRegions(RooWorkspace *w, std::vector<TString> regions, boo
 
    // to do so, a temporary PDF and a temporary dataset have to be built
    RooSimultaneous *pdfFull  = dynamic_cast<RooSimultaneous *>(w->pdf("simPdf"));
-   RooAbsData *     dataFull = w->data("obsData");
+   RooAbsData *     dataFull = w->data(dataName);
    RooCategory *    cat      = w->cat("channelCat");
 
    RooSimultaneous *pdf  = pdfFull;
@@ -432,7 +435,7 @@ void getSystTable(const char *inputFile, const char *workspaceName, const char *
    // this marvellous object is what allows us to know the yield for a given sample (or combination of samples) in a
    // region taking into account all scale factors, systematics...
    map<TString, RooFormulaVar *> impactRFV;
-   for (auto reg : evalRegionsVec) impactRFV[reg] = getComponent(w, samplesVec, reg);
+   for (auto reg : evalRegionsVec) impactRFV[reg] = getComponent(w, samplesVec, reg, dataName);
 
    // list of NPs (actually it can include more than the usual NPs: it contains the signal strength!)
    std::vector<TString> NPs = getFreeParameters(w);
@@ -491,7 +494,7 @@ void getSystTable(const char *inputFile, const char *workspaceName, const char *
 
    // perform pdf fit in specified regions
    w->loadSnapshot(snapBeforeFit);
-   RooFitResult *fitResult = fitPdfInRegions(w, fitRegionsVec, true);
+   RooFitResult *fitResult = fitPdfInRegions(w, dataName, fitRegionsVec, true);
    fitResult->Print();
    for (auto reg : evalRegionsVec) {
       const Double_t full_fit_impact = impactRFV[reg]->getVal();
@@ -537,14 +540,14 @@ void getSystTable(const char *inputFile, const char *workspaceName, const char *
          w->loadSnapshot(snapBeforeFit);
          w->var(np)->setVal(bestfit[np].val_up);
          w->var(np)->setConstant(kTRUE);
-         fitPdfInRegions(w, fitRegionsVec, kTRUE, kFALSE); // VALERIO's speedup
+         fitPdfInRegions(w, dataName, fitRegionsVec, kTRUE, kFALSE); // VALERIO's speedup
          const Double_t plus1_fit_impact = impactRFV[reg]->getVal();
 
          // now, fix this parameter to -1 sigma (TODO: check also -1 absolute?)
          w->loadSnapshot(snapBeforeFit);
          w->var(np)->setVal(bestfit[np].val_down);
          w->var(np)->setConstant(kTRUE);
-         fitPdfInRegions(w, fitRegionsVec, kTRUE, kFALSE); // VALERIO's speedup
+         fitPdfInRegions(w, dataName, fitRegionsVec, kTRUE, kFALSE); // VALERIO's speedup
          const Double_t minus1_fit_impact = impactRFV[reg]->getVal();
 
          // finally, evaluate impact!
@@ -577,7 +580,7 @@ void getSystTable(const char *inputFile, const char *workspaceName, const char *
 
       for (auto np : NPs)
          if (is_np_constrained(np)) w->var(np)->setConstant(kTRUE);
-      RooFitResult * frozen_fitResult  = fitPdfInRegions(w, fitRegionsVec, true);
+      RooFitResult * frozen_fitResult  = fitPdfInRegions(w, dataName, fitRegionsVec, true);
       const Double_t frozen_fit_impact = impactRFV[reg]->getVal();
       const Double_t frozen_fit_err    = impactRFV[reg]->getPropagatedError(*frozen_fitResult);
 
