@@ -11,6 +11,7 @@
 #include "Minimization.h"
 
 using namespace RooFit;
+using namespace std;
 
 void EXOSTATS::unfoldConstraints(RooArgSet &initial, RooArgSet &final, RooArgSet &obs, RooArgSet &nuis, int &counter)
 {

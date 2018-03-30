@@ -19,6 +19,7 @@
 #include "AsymptoticsCLsRunner.h"
 
 using namespace RooFit;
+using namespace std;
 
 std::map<TString, Float_t> getParameterValuesMap(RooStats::ModelConfig *mc)
 {

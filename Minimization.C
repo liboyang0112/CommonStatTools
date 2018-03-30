@@ -7,6 +7,8 @@
 
 #include "Minimization.h"
 
+using namespace std;
+
 int EXOSTATS::minimize(RooNLLVar *nll, Int_t maxRetries, RooWorkspace *w, TString mu0Snapshot, TString nominalSnapshot,
                        Int_t debugLevel, Bool_t saveFitResult, RooFitResult **fitResult)
 {
