@@ -9,6 +9,8 @@
 
 using namespace std;
 
+////////////////////////////////////////////////////
+/// See minimize(RooAbsReal, ...) for details.
 int EXOSTATS::minimize(RooNLLVar *nll, Int_t maxRetries, RooWorkspace *w, TString mu0Snapshot, TString nominalSnapshot,
                        Int_t debugLevel, Bool_t saveFitResult, RooFitResult **fitResult)
 {
@@ -16,6 +18,24 @@ int EXOSTATS::minimize(RooNLLVar *nll, Int_t maxRetries, RooWorkspace *w, TStrin
    return EXOSTATS::minimize(fcn, maxRetries, w, mu0Snapshot, nominalSnapshot, debugLevel, saveFitResult, fitResult);
 }
 
+////////////////////////////////////////////////////
+/// \param[in] nll pointer to the RooNLLVar to be minimized
+/// \param[in] maxRetries maximum number of retries before giving up
+/// \param[in] w pointer to the RooWorkSpace containing snapshots for fit retrials (see below)
+/// \param[in] mu0Snapshot name of the snapshot of likelihood parameters after the background-only fit
+/// \param[in] nominalSnapshot name of the snapshot of likelihood parameters at their nominal values
+/// \param[in] debugLevel debug level (0 = verbose, 1 = debug, 2 = warning, 3 = error, 4 = fatal, 5 = silent)
+/// \param[in] saveFitResult save fit results
+/// \param[in] RooFitResult pointer to a pointer to a RooFitResult object, where fit results will be stored
+/// \param[out] status status of the minimization
+/// 
+/// The minimization is attempted in a iterative way, by playing with the Minuit version and strategy, until convergence
+/// is reached or the maximum number of retrials has been tried.
+/// 
+/// If \c w is different from \c nullptr, the two specified parameter snapshots will also be used as a desperate measure
+/// to improve fit stability. 
+///
+/// Fit results can be optionally saved by activating the option \c saveFitResult and passing a pointer to a pointer to RooFitResult.
 int EXOSTATS::minimize(RooAbsReal *fcn, Int_t maxRetries, RooWorkspace *w, TString mu0Snapshot, TString nominalSnapshot,
                        Int_t debugLevel, Bool_t saveFitResult, RooFitResult **fitResult)
 {
