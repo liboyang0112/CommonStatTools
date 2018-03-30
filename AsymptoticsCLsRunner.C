@@ -21,6 +21,12 @@
 using namespace RooFit;
 using namespace std;
 
+//////////////////////////////////////////////////////////////////////////
+/// Utility function to create a map of the values of all nuisance parameters
+///
+/// \param[in] mc pointer to the RooStats::ModelConfig from which the list of nuisance parameters must be taken
+///
+/// Stores names and values of all parameters in a map.
 std::map<TString, Float_t> getParameterValuesMap(RooStats::ModelConfig *mc)
 {
    std::map<TString, Float_t> result;
@@ -47,6 +53,9 @@ EXOSTATS::AsymptoticsCLsRunner::AsymptoticsCLsRunner()
 
 EXOSTATS::AsymptoticsCLsRunner::~AsymptoticsCLsRunner() {}
 
+//////////////////////////////////////////////////////////////////////////
+/// Resets configuration
+///
 void EXOSTATS::AsymptoticsCLsRunner::reset()
 {
    // band configuration
@@ -96,6 +105,12 @@ void EXOSTATS::AsymptoticsCLsRunner::reset()
    m_firstPOIMin = 0;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Wrapper around EXOSTATS::minimize(RooNLLVar *nll, Int_t m_maxRetries)
+///
+/// \param[in] nll pointer to the RooNLLVar to be minimized
+///
+/// This fnuction keeps track of the number of calls to the EXOSTATS::minimize() function
 int EXOSTATS::AsymptoticsCLsRunner::minimize(RooNLLVar *nll)
 {
    if (m_debugLevel == 0) cout << "Call #" << m_nrMinimize << " to minimize" << endl;
@@ -103,6 +118,23 @@ int EXOSTATS::AsymptoticsCLsRunner::minimize(RooNLLVar *nll)
    return EXOSTATS::minimize(nll, m_maxRetries);
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Runs profile likelihood limits with CLs and asymptotic approximation
+///
+/// \param[in] inputFile name of the input file containing the workspace
+/// \param[in] workspaceName name of the workspace
+/// \param[in] modelConfigName name of the ModelConfig object to be retrieved from the workspace
+/// \param[in] dataName name of the dataset to be fitted
+/// \param[in] paramName name of the parameter which characterizes this workspace (e.g. "m_Higgs"); it will be added as a branch of the output TTree
+/// \param[in] paramValue value of the parameter which characterizes this workspace (e.g. 125.0); it will be stored in the corresponding branch of the output TTree
+/// \param[in] workspaceTag prefix for the output ROOT file
+/// \param[in] outputFolder path under which the output ROOT file will be stored; it will be created if it does not exist
+/// \param[in] CL confidence level for the calculation (e.g. 0.95 for 95% CL limits)
+/// \param[in] asimovDataName name of the Asimov dataset to be used; if empty, will be created
+/// 
+/// This function is a wrapper around the computeLimit() method. It allows standalone
+/// usage of the class, since it deals both with input workspace retrieval and output
+/// tree storage in a TFile. For more details on the output TTree, see computeLimit().
 void EXOSTATS::AsymptoticsCLsRunner::run(const char *inputFile, const char *workspaceName, const char *modelConfigName,
                                          const char *dataName, TString paramName, float paramValue,
                                          TString workspaceTag, TString outputFolder, Double_t CL,
@@ -128,6 +160,58 @@ void EXOSTATS::AsymptoticsCLsRunner::run(const char *inputFile, const char *work
    f_out.Write();
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Runs profile likelihood limits with CLs and asymptotic approximation
+///
+/// \param[in] workspace pointer to the RooWorkspace object to be considered
+/// \param[in] modelConfigName name of the ModelConfig object to be retrieved from the workspace
+/// \param[in] dataName name of the dataset to be fitted
+/// \param[in] paramName name of the parameter which characterizes this workspace (e.g. "m_Higgs"); it will be added as a branch of the output TTree
+/// \param[in] paramValue value of the parameter which characterizes this workspace (e.g. 125.0); it will be stored in the corresponding branch of the output TTree
+/// \param[in] CL confidence level for the calculation (e.g. 0.95 for 95% CL limits)
+/// \param[in] asimovDataName name of the Asimov dataset to be used; if empty, will be created
+/// \param[out] stats tree containing limit setting results
+/// 
+/// This method takes as an input a RooWorkspace, and specifications on which ModelConfig and dataset to be used, and
+/// performs limit setting with a given CL.
+/// The output TTree, named \c stats, contains a single entry, with standard branches with limit results, a special branch
+/// called paramName which contains the value specified by paramValue, and a branch per nuisance parameter with the
+/// values of each of them after the background-only and signal-plus-background fit.
+/// For example:
+/// \code
+///   root[0] stats->Print()
+///   mass      : mass/F                                                 *
+///   CLb_med   : CLb_med/F                                              *
+///   pb_med    : pb_med/F                                               *
+///   CLs_med   : CLs_med/F                                              *
+///   CLsplusb_med : CLsplusb_med/F                                      *
+///   CLb_obs   : CLb_obs/F                                              *
+///   pb_obs    : pb_obs/F                                               *
+///   CLs_obs   : CLs_obs/F                                              *
+///   CLsplusb_obs : CLsplusb_obs/F                                      *
+///   obs_upperlimit : obs_upperlimit/F                                  *
+///   inj_upperlimit : inj_upperlimit/F                                  *
+///   exp_upperlimit : exp_upperlimit/F                                  *
+///   exp_upperlimit_plus1 : exp_upperlimit_plus1/F                      *
+///   exp_upperlimit_plus2 : exp_upperlimit_plus2/F                      *
+///   exp_upperlimit_minus1 : exp_upperlimit_minus1/F                    *
+///   exp_upperlimit_minus2 : exp_upperlimit_minus2/F                    *
+///   fit_status : fit_status/F                                          *
+///   mu_hat_obs : mu_hat_obs/F                                          *
+///   mu_hat_exp : mu_hat_exp/F                                          *
+///   param_alpha_G2_hat : param_alpha_G2_hat/F                          *
+///   param_alpha_bkgER_hat : param_alpha_bkgER_hat/F                    *
+///   param_alpha_bkg_NormSys_bkgCryo_hat :                              *
+///   param_alpha_bkg_NormSys_bkgInt_hat :                               *
+///   param_alpha_bkg_NormSys_bkgPMT_hat :                               *
+///   param_alpha_sigQy_hat : param_alpha_sigQy_hat/F                    *
+///   param_alpha_G2_med : param_alpha_G2_med/F                          *
+///   param_alpha_bkgER_med : param_alpha_bkgER_med/F                    *
+///   param_alpha_bkg_NormSys_bkgCryo_med :                              *
+///   param_alpha_bkg_NormSys_bkgInt_med :                               *
+///   param_alpha_bkg_NormSys_bkgPMT_med :                               *
+///   param_alpha_sigQy_med : param_alpha_sigQy_med/F                    *
+/// \endcode
 TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, const char *modelConfigName,
                                                     const char *dataName, TString paramName, float paramValue,
                                                     Double_t CL, const char *asimovDataName)
@@ -528,6 +612,11 @@ TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, con
    return tree;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Wrapper around getLimit(RooNLLVar *nll, double initial_guess, double &upper_limit, double &mu_hat, std::map<TString, Float_t> &np_hat_map)
+///
+/// \param[in] nll pointer to the RooNLLVar to use
+/// \param[in] initial_guess initial guess for the parameter of interest best fit value
 double EXOSTATS::AsymptoticsCLsRunner::getLimit(RooNLLVar *nll, double initial_guess)
 {
    double                     upperLimit, muhat;
@@ -536,6 +625,14 @@ double EXOSTATS::AsymptoticsCLsRunner::getLimit(RooNLLVar *nll, double initial_g
    return upperLimit;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Calculates the upper limit on the signal strength
+///
+/// \param[in] nll pointer to the RooNLLVar to use
+/// \param[in] initial_guess initial guess for the parameter of interest best fit value (unconditional fit)
+/// \param[in] upper_limit value of the upper limit on the parameter of interest
+/// \param[in] mu_hat value of the best fit value of the parameter of interest
+/// \param[in] np_hat_map reference to the map of nuisance parameter names vs values for the unconditional fit
 void EXOSTATS::AsymptoticsCLsRunner::getLimit(RooNLLVar *nll, double initial_guess, double &upper_limit, double &mu_hat,
                                               std::map<TString, Float_t> &np_hat_map)
 {
@@ -696,6 +793,14 @@ void EXOSTATS::AsymptoticsCLsRunner::getLimit(RooNLLVar *nll, double initial_gue
    return;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Calculates the sigma parameter
+///
+/// \param[in] nll pointer to the RooNLLVar to use
+/// \param[in] mu value of the parameter of interest
+/// \param[in] best fit value of the parameter of interest (unconditional fit)
+/// \param[in] reference to the value of the test statistics q_mu
+/// \param[out] sigma
 double EXOSTATS::AsymptoticsCLsRunner::getSigma(RooNLLVar *nll, double mu, double muhat, double &qmu)
 {
    qmu = getQmu(nll, mu);
@@ -708,6 +813,10 @@ double EXOSTATS::AsymptoticsCLsRunner::getSigma(RooNLLVar *nll, double mu, doubl
       return (mu - muhat) * m_direction / sqrt(qmu);
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Calculates the expected p-value of the background-only hypothesis
+///
+/// \param[in] pb reference to the p-value
 void EXOSTATS::AsymptoticsCLsRunner::getExpPvalue(double &pb)
 {
 
@@ -767,6 +876,11 @@ void EXOSTATS::AsymptoticsCLsRunner::getExpPvalue(double &pb)
    return;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Calculates the observed p-value of the background-only hypothesis
+///
+/// \param[in] value of the parameter of interest to consider
+/// \param[in] reference to the p-value
 void EXOSTATS::AsymptoticsCLsRunner::getObsPvalue(double mu, double &pval)
 {
 
@@ -828,6 +942,11 @@ void EXOSTATS::AsymptoticsCLsRunner::getObsPvalue(double mu, double &pval)
    return;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Calculates the test statistics q_mu
+///
+/// \param[in] nll pointer to the RooNLLVar to use
+/// \param[in] mu value of the parameter of interest
 double EXOSTATS::AsymptoticsCLsRunner::getQmu(RooNLLVar *nll, double mu)
 {
    double nll_muhat = m_map_nll_muhat[nll];
@@ -840,6 +959,11 @@ double EXOSTATS::AsymptoticsCLsRunner::getQmu(RooNLLVar *nll, double mu)
    return 2 * (nll_val - nll_muhat);
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Saves a snapshot of all workspace parameters
+///
+/// \param[in] nll pointer to the RooNLLVar to use
+/// \param[in] mu value of the parameter of interest (used to name the snapshot)
 void EXOSTATS::AsymptoticsCLsRunner::saveSnapshot(RooNLLVar *nll, double mu)
 {
    stringstream snapshotName;
@@ -848,6 +972,11 @@ void EXOSTATS::AsymptoticsCLsRunner::saveSnapshot(RooNLLVar *nll, double mu)
                      (m_mc->GetNuisanceParameters() ? *m_mc->GetNuisanceParameters() : RooArgSet()));
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Loads the snapshot of all workspace parameters corresponding to the desired value of the parameter of interest
+///
+/// \param[in] nll pointer to the RooNLLVar to use
+/// \param[in] mu value of the parameter of interest
 void EXOSTATS::AsymptoticsCLsRunner::loadSnapshot(RooNLLVar *nll, double mu)
 {
    stringstream snapshotName;
@@ -855,6 +984,13 @@ void EXOSTATS::AsymptoticsCLsRunner::loadSnapshot(RooNLLVar *nll, double mu)
    m_w->loadSnapshot(snapshotName.str().c_str());
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Performs the predictive fit
+///
+/// \param[in] nll pointer to the RooNLLVar to use
+/// \param[in] mu1
+/// \param[in] mu2
+/// \param[in] mu
 void EXOSTATS::AsymptoticsCLsRunner::doPredictiveFit(RooNLLVar *nll, double mu1, double mu2, double mu)
 {
    if (fabs(mu2 - mu) < m_direction * mu * m_precision * 4) {
@@ -901,6 +1037,14 @@ void EXOSTATS::AsymptoticsCLsRunner::doPredictiveFit(RooNLLVar *nll, double mu1,
    }
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Creates the negative log-likelihood to be used in the fit
+///
+/// \param[in] _data pointer to the \c RooDataSet to compute the likelihood on
+/// \param[out] nll pointer to the output \c RooNLLVar
+///
+/// Constraints are applied, as well as likelihood optimization. Multiple CPU running
+/// is available if set (see setNumCPU()).
 RooNLLVar *EXOSTATS::AsymptoticsCLsRunner::createNLL(RooDataSet *_data)
 {
    const RooArgSet *nuis = m_mc->GetNuisanceParameters();
@@ -913,6 +1057,11 @@ RooNLLVar *EXOSTATS::AsymptoticsCLsRunner::createNLL(RooDataSet *_data)
    return nll;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Computes the best fit value of a negative log-likelihood
+///
+/// \param[in] nll pointer to the \c RooNLLVar to minimize
+/// \param[out] val value of the negative log-likelihood after the fit
 double EXOSTATS::AsymptoticsCLsRunner::getNLL(RooNLLVar *nll)
 {
    string snapshotName = m_map_snapshots[nll];
@@ -923,6 +1072,13 @@ double EXOSTATS::AsymptoticsCLsRunner::getNLL(RooNLLVar *nll)
    return val;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Extrapolates the parameter of interest value
+///
+/// \param[in] sigma_obs
+/// \param[in] sigma
+/// \param[in] muhat
+/// \param[out] mu_guess 
 double EXOSTATS::AsymptoticsCLsRunner::findCrossing(double sigma_obs, double sigma, double muhat)
 {
    double mu_guess  = muhat + ROOT::Math::gaussian_quantile(1 - m_target_CLs, 1) * sigma_obs * m_direction;
@@ -981,6 +1137,10 @@ double EXOSTATS::AsymptoticsCLsRunner::findCrossing(double sigma_obs, double sig
    return mu_guess;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Sets the parameter of interest to a given value, extending its range if needed.
+///
+/// \param[in] mu desided value of the parameter of interest
 void EXOSTATS::AsymptoticsCLsRunner::setMu(double mu)
 {
    if (mu != mu) {
@@ -993,6 +1153,12 @@ void EXOSTATS::AsymptoticsCLsRunner::setMu(double mu)
    m_firstPOI->setVal(mu);
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Performs a brute-force calculation of q_mu95
+///
+/// \param[in] sigma
+/// \param[in] mu
+/// \param[out] qmu
 double EXOSTATS::AsymptoticsCLsRunner::getQmu95_brute(double sigma, double mu)
 {
    double step_size = 0.001;
@@ -1007,6 +1173,14 @@ double EXOSTATS::AsymptoticsCLsRunner::getQmu95_brute(double sigma, double mu)
    return 20;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Tries to calculate of q_mu95
+///
+/// \param[in] sigma
+/// \param[in] mu
+/// \param[out] qmu
+///
+/// Reverts to the brute-force calculation getQmu95_brute() if needed
 double EXOSTATS::AsymptoticsCLsRunner::getQmu95(double sigma, double mu)
 {
    double qmu95 = 0;
@@ -1070,6 +1244,15 @@ double EXOSTATS::AsymptoticsCLsRunner::getQmu95(double sigma, double mu)
    return qmu95;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Calculates CLs given a value of qmu_tilde, sigma and the parameter of interest
+///
+/// \param[in] qmu_tilde
+/// \param[in] sigma
+/// \param[in] mu
+/// \param[out] CLs
+///
+/// Reverts to the brute-force calculation getQmu95_brute() if needed
 double EXOSTATS::AsymptoticsCLsRunner::calcCLs(double qmu_tilde, double sigma, double mu)
 {
    double pmu = calcPmu(qmu_tilde, sigma, mu);
@@ -1082,6 +1265,13 @@ double EXOSTATS::AsymptoticsCLsRunner::calcCLs(double qmu_tilde, double sigma, d
    return pmu / (1 - pb);
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Calculates p_mu
+///
+/// \param[in] qmu
+/// \param[in] sigma
+/// \param[in] mu
+/// \param[out] p_mu
 double EXOSTATS::AsymptoticsCLsRunner::calcPmu(double qmu, double sigma, double mu)
 {
    double pmu;
@@ -1095,6 +1285,13 @@ double EXOSTATS::AsymptoticsCLsRunner::calcPmu(double qmu, double sigma, double 
    return pmu;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Calculates p_b
+///
+/// \param[in] qmu
+/// \param[in] sigma
+/// \param[in] mu
+/// \param[out] p_b
 double EXOSTATS::AsymptoticsCLsRunner::calcPb(double qmu, double sigma, double mu)
 {
    if (qmu < mu * mu / (sigma * sigma) || !m_doTilde) {
@@ -1104,6 +1301,13 @@ double EXOSTATS::AsymptoticsCLsRunner::calcPb(double qmu, double sigma, double m
    }
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Internal use
+///
+/// \param[in] qmu
+/// \param[in] sigma
+/// \param[in] mu
+/// \param[out] dpmu_dq
 double EXOSTATS::AsymptoticsCLsRunner::calcDerCLs(double qmu, double sigma, double mu)
 {
    double dpmu_dq  = 0;
@@ -1129,255 +1333,70 @@ double EXOSTATS::AsymptoticsCLsRunner::calcDerCLs(double qmu, double sigma, doub
    return dpmu_dq / (1 - pb) - calcCLs(qmu, sigma, mu) / (1 - pb) * d1mpb_dq;
 }
 
-/*
-RooDataSet* makeAsimovData2(RooDataSet* conditioningData, double mu_true, double mu_prof, string* mu_str, string*
-mu_prof_str)
-{
-  RooNLLVar* conditioningNLL = nullptr;
-  if (conditioningData)
-  {
-    conditioningNLL = (RooNLLVar*)m_mc->GetPdf()->createNLL(*conditioningData);
-  }
-  return makeAsimovData2(conditioningNLL, mu_true, mu_prof, mu_str, mu_prof_str);
-}
-
-
-RooDataSet* makeAsimovData2(RooNLLVar* conditioningNLL, double mu_true, double mu_prof, string* mu_str, string*
-mu_prof_str)
-{
-  if (mu_prof == -999) mu_prof = mu_true;
-  bool doTest = 0;
-
-  cout << "Creating asimov data at mu = " << mu_true << ", profiling at mu = " << mu_prof << endl;
-  int printLevel = ROOT::Math::MinimizerOptions::DefaultPrintLevel();
-
-  int test = 0;
-  if (doTest) cout << "test = " << test++ << endl;
-
-  int _printLevel = 0;
-
-  stringstream muStr;
-  muStr << setprecision(5);
-  muStr << "_" << mu_true;
-  if (mu_str) *mu_str = muStr.str();
-
-  stringstream muStrProf;
-  muStrProf << setprecision(5);
-  muStrProf << "_" << mu_prof;
-  if (mu_prof_str) *mu_prof_str = muStrProf.str();
-
-
-  if (doTest) cout << "test = " << test++ << endl;
-  const RooArgSet* globs = m_mc->GetGlobalObservables();
-  const RooArgSet* nuis = m_mc->GetNuisanceParameters();
-  const RooArgSet* obs = m_mc->GetObservables();
-  const RooArgSet* pois = m_mc->GetParametersOfInterest();
-
-  TIterator* gItr = globs->createIterator();
-  TIterator* nItr = nuis->createIterator();
-  RooRealVar* var;
-
-  //cout << "test = " << test++ << endl;
-  RooArgSet emptySet;
-  RooArgSet params(*nuis);
-  params.add(*globs);
-  params.add(*pois);
-  m_w->saveSnapshot("initial_params", params);
-
-  if (doTest) cout << "test = " << test++ << endl;
-
-//condition the MLEs
-  if (conditioningNLL)
-  {
-    //get the conditional MLEs
-    m_firstPOI->setVal(mu_prof);
-    m_firstPOI->setConstant(1);
-    minimize(conditioningNLL);
-  }
-
-  if (doTest) cout << "test = " << test++ << endl;
-  m_w->saveSnapshot(("conditionalNuis" +muStrProf.str()).c_str(),*nuis);
-
-
-//to find the conditional globs, do a fit to the constraint only pdf with the globs floating and the MLEs constant
-  RooArgSet obsCopy = *obs;
-  RooArgSet nuisCopy = *nuis;
-
-  RooArgSet constraints(*m_mc->GetPdf()->getAllConstraints(obsCopy, nuisCopy));
-  RooRealVar minusOne("minusOne","minusOne",-1);
-  constraints.add(minusOne);
-  RooProduct constrFunc("constrFunc","constrFunc",constraints);
-
-  if (doTest) cout << "test = " << test++ << endl;
-  while ((var = (RooRealVar*)gItr->Next()))
-  {
-    var->setConstant(false);
-  }
-  gItr->Reset();
-
-  while ((var = (RooRealVar*)nItr->Next()))
-  {
-    var->setConstant(true);
-  }
-  nItr->Reset();
-
-  minimize(&constrFunc);
-
-  while ((var = (RooRealVar*)gItr->Next()))
-  {
-    var->setConstant(true);
-  }
-  gItr->Reset();
-
-  while ((var = (RooRealVar*)nItr->Next()))
-  {
-    var->setConstant(false);
-  }
-  nItr->Reset();
-
-  m_w->saveSnapshot(("conditionalGlobs"+muStrProf.str()).c_str(),*globs);
-
-
-  if (doTest) cout << "test = " << test++ << endl;
-
-
-
-//make the asimov data
-  const char* weightName="weightVar";
-  RooArgSet obsAndWeight;
-  obsAndWeight.add(*m_mc->GetObservables());
-
-  RooRealVar* weightVar = nullptr;
-  if (!(weightVar = m_w->var(weightName)))
-  {
-    m_w->import(*(new RooRealVar(weightName, weightName, 1,0,10000000)));
-    weightVar = m_w->var(weightName);
-  }
-  obsAndWeight.add(*m_w->var(weightName));
-
-
-  if (doTest) cout << "test = " << test++ << endl;
-
-  RooSimultaneous* simPdf = dynamic_cast<RooSimultaneous*>(m_mc->GetPdf());
-  map<string, RooDataSet*> asimovDataMap;
-
-  //try fix for sim pdf
-  RooCategory* channelCat = (RooCategory*)&simPdf->indexCat();
-  TIterator* iter = channelCat->typeIterator() ;
-  RooCatType* tt = nullptr;
-  int nrIndices = 0;
-  int iFrame=0;
-  while((tt=(RooCatType*) iter->Next())) {
-    nrIndices++;
-  }
-  for (int i=0;i<nrIndices;i++){
-    channelCat->setIndex(i);
-    iFrame++;
-    // Get pdf associated with state from simpdf
-    RooAbsPdf* pdftmp = simPdf->getPdf(channelCat->getLabel()) ;
-
-    // Generate observables defined by the pdf associated with this state
-    RooArgSet* obstmp = pdftmp->getObservables(*m_mc->GetObservables()) ;
-
-    if (_printLevel >= 1)
-    {
-      obstmp->Print();
-      cout << "on type " << channelCat->getLabel() << " " << iFrame << endl;
-    }
-
-    RooDataSet* obsDataUnbinned = new
-RooDataSet(Form("combAsimovData%d",iFrame),Form("combAsimovData%d",iFrame),RooArgSet(obsAndWeight,*channelCat),WeightVar(*weightVar));
-    RooRealVar* thisObs = ((RooRealVar*)obstmp->first());
-    double expectedEvents = pdftmp->expectedEvents(*obstmp);
-    double thisNorm = 0;
-    for(int jj=0; jj<thisObs->numBins(); ++jj){
-      thisObs->setBin(jj);
-
-      thisNorm=pdftmp->getVal(obstmp)*thisObs->getBinWidth(jj);
-      if (thisNorm*expectedEvents > 0 && thisNorm*expectedEvents < pow(10.0, 18))
-obsDataUnbinned->add(*m_mc->GetObservables(), thisNorm*expectedEvents);
-    }
-
-    if (_printLevel >= 1)
-    {
-      obsDataUnbinned->Print();
-      cout <<"sum entries "<<obsDataUnbinned->sumEntries()<<endl;
-    }
-    if(obsDataUnbinned->sumEntries()!=obsDataUnbinned->sumEntries()){
-      cout << "sum entries is nan"<<endl;
-      exit(1);
-    }
-
-
-    asimovDataMap[string(channelCat->getLabel())] = obsDataUnbinned;
-
-    if (_printLevel >= 1)
-    {
-      cout << "channel: " << channelCat->getLabel() << ", data: ";
-      obsDataUnbinned->Print();
-      cout << endl;
-    }
-  }
-
-  if (doTest) cout << "test = " << test++ << endl;
-  RooDataSet* asimovData = new
-RooDataSet(("asimovData"+muStr.str()).c_str(),("asimovData"+muStr.str()).c_str(),RooArgSet(obsAndWeight,*channelCat),Index(*channelCat),Import(asimovDataMap),WeightVar(*weightVar));
-  if (m_w->data(("asimovData"+muStr.str()).c_str()))
-  {
-    m_w->import(*asimovData, true);
-  }
-  else
-  {
-    m_w->import(*asimovData);
-  }
-
-
-
-
-  m_w->loadSnapshot("initial_params");
-  ROOT::Math::MinimizerOptions::SetDefaultPrintLevel(printLevel);
-
-  if (doTest) cout << "test = " << test++ << endl;
-  return asimovData;
-
-}
-*/
-
+//////////////////////////////////////////////////////////////////////////
+/// Activates the better implementation of the calculation of limit bands
+///
+/// Improves bands by using a more appropriate Asimov dataset for those points. Recommended value is \c kTRUE
 void EXOSTATS::AsymptoticsCLsRunner::setBetterBands(Bool_t value)
 {
    m_betterBands = value;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Activates the better implementation of the calculation of limit bands also for the negative bands
+///
+/// Recommended value is \c kFALSE
 void EXOSTATS::AsymptoticsCLsRunner::setBetterNegativeBands(Bool_t value)
 {
    m_betterNegativeBands = value;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Profiles the Asimov for negative bands at zero
+///
+/// Recommended value is \c kFALSE
 void EXOSTATS::AsymptoticsCLsRunner::setProfileNegativeAtZero(Bool_t value)
 {
    m_profileNegativeAtZero = value;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Sets the name of the default minimizer
+///
+/// E.g. Minuit/Minuit2
 void EXOSTATS::AsymptoticsCLsRunner::setDefaultMinimizer(TString value)
 {
    m_defaultMinimizer = value;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Sets the Minuit print level
 void EXOSTATS::AsymptoticsCLsRunner::setDefaultMinimizerPrintLevel(Int_t value)
 {
    m_defaultPrintLevel = value;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Sets the Minuit minimization strategy.
+///
+/// 0 = fastest, least robust. 2 = slowest, most robust
 void EXOSTATS::AsymptoticsCLsRunner::setDefaultMinimizerStrategy(Int_t value)
 {
    m_defaultStrategy = value;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Suppresses all RooFit warnings below FATAL
 void EXOSTATS::AsymptoticsCLsRunner::setRooFitWarningSuppression(Bool_t value)
 {
    m_killBelowFatal = value;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Specifies the analysis is blinded
+///
+/// If set to \c kTRUE, observed limits are deactivated and the expected limits are not performed
+/// by profiling nuisance parameters on the observed dataset
 void EXOSTATS::AsymptoticsCLsRunner::setBlind(Bool_t value)
 {
    m_doBlind             = value;
@@ -1385,16 +1404,26 @@ void EXOSTATS::AsymptoticsCLsRunner::setBlind(Bool_t value)
    m_doObs               = m_doObs && !m_doBlind;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Specifies the profiling mode for Asimov data
+///
+/// If set to \c kTRUE, conditional maximum-likelihood estimates of all parameters are used (i.e. they
+/// are fitted to data in a background-only fit). If set to \c kFALSE, nominal parameter values are
+/// used instead.
 void EXOSTATS::AsymptoticsCLsRunner::setConditionalExpected(Bool_t value)
 {
    m_conditionalExpected = value && !m_doBlind;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// If set to \c kTRUE, binds the parameter of interest at zero and computes the q_mu_tilde calculation
 void EXOSTATS::AsymptoticsCLsRunner::setTilde(Bool_t value)
 {
    m_doTilde = value;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// If set to kTRUE, compute only the expected limits.
 void EXOSTATS::AsymptoticsCLsRunner::setExpected(Bool_t value)
 {
    if (value) {
@@ -1410,51 +1439,78 @@ void EXOSTATS::AsymptoticsCLsRunner::setExpected(Bool_t value)
    }
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Compute the observed limit. 
+///
+/// Must be called \b after the setBlind() has been called.
 void EXOSTATS::AsymptoticsCLsRunner::setObserved(Bool_t value)
 {
    m_doObs = value && !m_doBlind;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Compute the expected limit after signal injection. 
+///
+/// See the method setInjectionStrength().
 void EXOSTATS::AsymptoticsCLsRunner::setInjection(Bool_t value)
 {
    m_doInj = value;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Configures the signal injection test
+///
+/// If and only if setInjection(kTRUE) was called, a signal injection test
+/// will be performed, with the specified value of the parameter of interest
 void EXOSTATS::AsymptoticsCLsRunner::setInjectionStrength(Double_t value)
 {
    m_muInjection = value;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Precision to be used in the parameter of interest calculation iteration
 void EXOSTATS::AsymptoticsCLsRunner::setPrecision(Double_t value)
 {
    m_precision = value;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Debug level: 0 = verbose, 1 = debug, 2 = warning, 3 = error, 4 = fatal, 5 = silent
 void EXOSTATS::AsymptoticsCLsRunner::setDebugLevel(Int_t value)
 {
    m_debugLevel = value;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Experimental: extrapolate best fit nuisance parameters based on previous fit results
 void EXOSTATS::AsymptoticsCLsRunner::setUsePredictiveFit(Bool_t value)
 {
    m_usePredictiveFit = value;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Experimental: extrapolate sigma based on previous fits
 void EXOSTATS::AsymptoticsCLsRunner::setExtrapolateSigma(Bool_t value)
 {
    m_extrapolateSigma = value;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Set number of retries of the negative log-likelihood minimization before giving up
 void EXOSTATS::AsymptoticsCLsRunner::setMaxRetries(Int_t value)
 {
    m_maxRetries = value;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Perform the p-value calculation
 void EXOSTATS::AsymptoticsCLsRunner::setCalculatePvalues(Bool_t value)
 {
    m_doPvals = value;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// Set the number of CPUs to be used for the parallelisation of the likelihood calculation
 void EXOSTATS::AsymptoticsCLsRunner::setNumCPU(Int_t value)
 {
    m_NumCPU = value;

@@ -1,6 +1,19 @@
 #ifndef __EXOSTATS_ASYMPTOTICSCLSRUNNER_H__
 #define __EXOSTATS_ASYMPTOTICSCLSRUNNER_H__
 
+/** \class EXOSTATS::AsymptoticsCLsRunner
+A class to run profile likelihood limits using CLs and asymptotic formulae
+
+This class runs profile likelihood limits using CLs and asymptotic formulae, based on Eur.Phys.J.C71:1554,2011
+(arXiv:1007.1727).
+Limit setting properties can be configured (and retrieved) using setters/getters methods.
+
+A standalone function to perform limits based on a given input is provided, run().
+
+\author Aaron Armbruster (original code), Valerio Ippolito (adaptation into a C++ class)
+*/
+
+
 /*
 Author: Aaron Armbruster
 Date:   2012-05-25
