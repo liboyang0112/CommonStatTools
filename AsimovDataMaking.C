@@ -1,3 +1,5 @@
+/// \file
+/// Tools to create Asimov datasets
 #include <RooDataSet.h>
 #include <RooNLLVar.h>
 #include <RooStats/ModelConfig.h>

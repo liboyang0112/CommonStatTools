@@ -1,6 +1,9 @@
 #ifndef __EXOSTATS_ASIMOVDATAMAKING_H__
 #define __EXOSTATS_ASIMOVDATAMAKING_H__
 
+/// \file
+/// Tools to create Asimov datasets
+
 #include <string>
 #include <RooArgSet.h>
 

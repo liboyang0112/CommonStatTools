@@ -1449,7 +1449,7 @@ void EXOSTATS::AsymptoticsCLsRunner::setObserved(Bool_t value)
 }
 
 //////////////////////////////////////////////////////////////////////////
-/// Compute the expected limit after signal injection. 
+/// Compute the limit after signal injection. 
 ///
 /// See the method setInjectionStrength().
 void EXOSTATS::AsymptoticsCLsRunner::setInjection(Bool_t value)

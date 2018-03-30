@@ -1,3 +1,6 @@
+/// \file
+/// Tools to visualize fit correlation matrices
+
 #include <TFile.h>
 #include <RooWorkspace.h>
 #include <RooStats/ModelConfig.h>
@@ -16,6 +19,16 @@
 
 R__LOAD_LIBRARY(Minimization.C+)
 
+/// Saves the fit correlation matrix to file
+/// \param[in] inputFile name of the input file
+/// \param[in] workspaceName name of the input workspace
+/// \param[in] modelConfigName name of the input ModelConfig
+/// \param[in] dataName name of the dataset to fit
+/// \param[in] workspaceTag prefix for the output ROOT file
+/// \param[in] outputFolder path under which the output ROOT file will be stored; it will be created if it does not exist
+/// \param[in] outputFormat format of the output file (e.g. ".root")
+/// \param[in] doReduced keep this to kTRUE
+/// \param[in] debugLevel (0 = verbose, 1 = debug, 2 = warning, 3 = error, 4 = fatal, 5 = silent)
 void getCorrMatrix(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName,
                    TString workspaceTag, TString outputFolder, TString outputFormat, Bool_t doReduced = kTRUE,
                    Int_t debugLevel = 2)

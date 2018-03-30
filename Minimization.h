@@ -1,6 +1,9 @@
 #ifndef __EXOSTATS_MINIMIZATION_H__
 #define __EXOSTATS_MINIMIZATION_H__
 
+/// \file
+/// Tools to perform likelihood minimization
+
 #include <TString.h>
 
 class RooAbsReal;

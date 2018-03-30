@@ -1,8 +1,17 @@
+/// \file
+/// Functions to compute the global significance
+
 #include <iostream>
 #include <TMath.h>
 #include <RooStats/RooStatsUtils.h>
 
-// macro for global p-value calculation
+/// Compute the global p0
+/// \param[in] maximumSignificance maximum local significance, in number of gaussian sigmas
+/// \param[in] nCrossings number of crossings
+/// \param[in] debugLevel (0 = verbose, 1 = debug, 2 = warning, 3 = error, 4 = fatal, 5 = silent)
+/// \param[out] p0 global p-value of the background-only hypothesis
+///
+/// See ATL-PHYS-PUB-2011-011 for details.
 Double_t getGlobalP0(Double_t maximumSignificance, UInt_t nCrossings, Int_t debugLevel = 2)
 {
 
@@ -28,6 +37,9 @@ Double_t getGlobalP0(Double_t maximumSignificance, UInt_t nCrossings, Int_t debu
    return pglobal;
 }
 
+/// Compute the global significance
+///
+/// See getGlobalP0()
 Double_t getGlobalSignificance(Double_t maximumSignificance, UInt_t nCrossings, Int_t debugLevel = 2)
 {
    return RooStats::PValueToSignificance(getGlobalP0(maximumSignificance, nCrossings, debugLevel));

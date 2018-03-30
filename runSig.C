@@ -1,3 +1,6 @@
+/// \file
+/// Macro to run p0 calculation using profile likelihood and asymptotic formulae
+
 /*
 Author: Aaron Armbruster
 Date:   2012-06-01
@@ -29,8 +32,6 @@ to choose which mu value to profile observed data at before generating expected
 #include "Minimization.h"
 #include "AsimovDataMaking.h"
 
-//#include "macros/makeData.C"
-
 #include "TFile.h"
 
 #include <iostream>
@@ -44,17 +45,58 @@ using namespace std;
 using namespace RooFit;
 using namespace RooStats;
 
+/// Runs the p0 calculation using profile likelihood and asymptotic formulae
+///
+/// \param[in] inputFile name of the input file
+/// \param[in] workspaceName name of the input workspace
+/// \param[in] modelConfigName name of the input ModelConfig
+/// \param[in] dataName name of the dataset to fit
+/// \param[in] paramName name of the parameter which characterizes this workspace (e.g. "m_Higgs"); it will be added as a branch of the output TTree
+/// \param[in] paramValue value of the parameter which characterizes this workspace (e.g. 125.0); it will be stored in the corresponding branch of the output TTree
+/// \param[in] workspaceTag prefix for the output ROOT file
+/// \param[in] outputFolder path under which the output ROOT file will be stored; it will be created if it does not exist
+/// \param[in] keepDataBlind if true, data are not used (blind analysis)
+/// \param[in] asimovDataName name of the Asimov dataset to be used; if empty, will be created
+/// \param[in] conditionalSnapshot name of the conditional snapshot 
+/// \param[in] nominalSnapshot name of the nominal nuisance parameter snapshot
+/// \param[in] doInjection compute the limit after signal injection
+/// \param[in] muInjection value of the parameter of interest to be used for injection
+/// \param[in] debugLevel (0 = verbose, 1 = debug, 2 = warning, 3 = error, 4 = fatal, 5 = silent)
+///
+/// This function takes an input workspace and computes the p-value of the background-only hypothesis.
+///
+/// The function creates, in the folder outputFolder/asymptotics/, a TFile named e.g. workspaceTag_[BLIND]_p0.root,
+/// which contains a TTree. This output TTree, named \c p0, contains a single entry, with standard branches
+/// with p-value calculation results, and a special branch called \c paramName which contains the value specified by \c paramValue.
+/// For example:
+/// \code
+///   root[0] p0->Print()
+///   mass      : mass/F
+///   obs_sig   : obs_sig/F
+///   obs_pval  : obs_pval/F
+///   med_sig   : med_sig/F
+///   med_pval  : med_pval/F
+///   inj_sig   : inj_sig/F
+///   inj_pval  : inj_pval/F
+///   med_q0    : med_q0/F
+///   inj_q0    : inj_q0/F
+/// \endcode
+///
+///
+/// Tip: the best way to profit from the TTree structure when one needs to run over different workspaces
+/// representing similar physics processes (e.g. scanning the resonance mass of a given new physics model)
+/// is to \c hadd all output files, so that the resulting TTree contains one entry per mass point.
 void runSig(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName,
             TString paramName, Float_t paramValue, TString workspaceTag, TString outputFolder, Bool_t keepDataBlind,
             const char *asimovDataName = "asimovData_1", const char *conditionalSnapshot = "conditionalGlobs_1",
-            const char *nominalSnapshot = "nominalGlobs", Float_t muInjection = 1, Int_t debugLevel = 2)
+            const char *nominalSnapshot = "nominalGlobs", Bool_t doInjection = kFALSE, Float_t muInjection = 1, Int_t debugLevel = 2)
 
 {
    const UInt_t nCPU             = 3; // number of CPUs to be used in the fit
    const double       mu_profile_value = 1; // mu value to profile the obs data at before generating the expected
    const bool         doConditional    = 1 && !keepDataBlind; // do conditional expected data
    const bool         doUncap          = 1;                   // uncap p0
-   const bool         doInj            = 0; // setup the poi for injection study (zero is faster if you're not)
+   const bool         doInj            = doInjection; // setup the poi for injection study (zero is faster if you're not)
    const bool         muInj            = muInjection; // injection value for mu (if injection is requested)
    const bool         doObs            = 1 && !keepDataBlind; // compute median significance
    const bool         doMedian         = 1;                   // compute observed significance
@@ -310,7 +352,7 @@ void runSig(const char *inputFile, const char *workspaceName, const char *modelC
    const TString blindness     = (keepDataBlind) ? "_BLIND" : "";
    const TString fullOutFolder = outputFolder + "/asymptotics/";
    system("mkdir -vp " + fullOutFolder);
-   const TString outFileName = fullOutFolder + workspaceTag + blindness + "_sig.root";
+   const TString outFileName = fullOutFolder + workspaceTag + blindness + "_p0.root";
    TFile         f_out(outFileName, "RECREATE");
    tree->SetDirectory(&f_out);
    f_out.Write();

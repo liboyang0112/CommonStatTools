@@ -1,7 +1,7 @@
-// A simple macro to evaluate pre- and post- fit impacts of nuisance parameters,
-// using HistFactory workspaces
-// Valerio Ippolito, Emma Tolley - Harvard University
-// run with root -b -q getSystTable.C+
+/// \file
+/// A simple macro to evaluate pre- and post- fit impacts of nuisance parameters,
+/// using HistFactory workspaces
+/// \authors Valerio Ippolito, Emma Tolley - Harvard University
 
 #include <RooWorkspace.h>
 #include <RooRealSumPdf.h>
@@ -21,7 +21,9 @@
 #include <sstream>
 #include <iomanip>
 
-// helper class to hold param info
+////////////////////////////////////
+/// \class ParamFitResult
+/// Helper class to hold parameter info
 class ParamFitResult {
 public:
    Double_t val;
@@ -34,8 +36,12 @@ public:
    }
 };
 
-// string & output formatting
-
+////////////////////////////////////
+/// A function to tokenize a string
+/// 
+/// \param[in] line the string
+/// \param[in] delim its separator
+/// \param[out] vtokens a vector of tokens
 std::vector<TString> getTokens(TString line, TString delim)
 {
    std::vector<TString> vtokens;
@@ -52,6 +58,12 @@ std::vector<TString> getTokens(TString line, TString delim)
    return vtokens;
 }
 
+////////////////////////////////////
+/// A copy of the python \c join method
+/// 
+/// \param[in] separator the separator to add
+/// \param[in] vec a vector of strings
+/// \param[out] result a string containing all vector elements separated by a separator
 TString join(TString separator, std::vector<TString> vec)
 {
    TString result("");
@@ -65,6 +77,12 @@ TString join(TString separator, std::vector<TString> vec)
    return result;
 }
 
+////////////////////////////////////
+/// Convert a double into a string with fixed number of digits after the decimal point
+/// 
+/// \param[in] x the number
+/// \param[in] decDigits the number of digits
+/// \param[out] ss a string
 TString prd(const double x, const int decDigits)
 {
    stringstream ss;
@@ -74,29 +92,44 @@ TString prd(const double x, const int decDigits)
    return ss.str();
 }
 
-/////////////
-
+////////////////////////////////////
+/// Given the nuisance parameter names, determines if it'c constrained or not
+/// 
+/// \param[in] input the nuisance parameter name
+/// \param[out] result \c kTRUE if the parameter is constrained, \c kFALSE otherwise
+///
+/// This function could easily be implemented without relying on the name of
+/// the parameter, but using RooFit methods only.
 bool is_np_constrained(TString input)
 {
    return input.Contains("alpha") || input.Contains("gamma");
 }
 
+////////////////////////////////////
+/// Retrieves the names of all p.d.f. components (samples) in a given region
+///
+/// \param[in] region name of the region
+/// \param[in] regionPdf pointer to the region p.d.f.
+/// \param[out] result vector of names of likelihood components in that region
+/// 
+/// The rough structure of an HistFactory workspace is
+/// \code
+///   RooSimultaneous::simPdf
+///     RooProdPdf::model_REGION1
+///       RooGaussian::lumiConstraint
+///       RooGaussian::alpha_SYST1Constraint (for overallsys)
+///       RooPoisson::gamma_stat_REGION1_bin_BIN1_constraint (for stat uncertainty)
+///       RooRealSumPdf::REGION1_model (sum of RooProduct objects, each of them weighted by [the same] bin width)
+///         RooProduct::L_x_SAMPLE1_REGION1_overallSyst_x_Exp (term for sample 1, including uncertainties [RooHistFunc
+///         and FlexibleInterpVar or PieceWiseInterpolation])
+/// \endcode
+/// Note that NormFactors are included in the L_x_blabla term (e.g. this term changes integral when SigXsecOverSM is
+/// changed).
+///
+/// Here we simply want to retrieve the list of RooProducts (L_x_blabla) associated to a given region (i.e. to the
+/// RooRealSumPdf representing that region).
 std::vector<TString> getAllComponentNamesInRegions(TString region, RooAbsPdf *regionPdf)
 {
-   // the rough structure of an HistFactory workspace is
-   //   RooSimultaneous::simPdf
-   //     RooProdPdf::model_REGION1
-   //       RooGaussian::lumiConstraint
-   //       RooGaussian::alpha_SYST1Constraint (for overallsys)
-   //       RooPoisson::gamma_stat_REGION1_bin_BIN1_constraint (for stat uncertainty)
-   //       RooRealSumPdf::REGION1_model (sum of RooProduct objects, each of them weighted by [the same] bin width)
-   //         RooProduct::L_x_SAMPLE1_REGION1_overallSyst_x_Exp (term for sample 1, including uncertainties [RooHistFunc
-   //         and FlexibleInterpVar or PieceWiseInterpolation])
-   // note that NormFactors are included in the L_x_blabla term (e.g. this term changes integral when SigXsecOverSM is
-   // changed)
-   //
-   // here we simply want to retrieve the list of RooProducts (L_x_blabla) associated to a given region (i.e. to the
-   // RooRealSumPdf representing that region)
    const TString  rrsPdfName = TString::Format("%s_model", region.Data());
    RooRealSumPdf *rrsPdf     = dynamic_cast<RooRealSumPdf *>(regionPdf->getComponents()->find(rrsPdfName));
 
@@ -114,26 +147,34 @@ std::vector<TString> getAllComponentNamesInRegions(TString region, RooAbsPdf *re
    return result;
 }
 
+/// Create a RooFormulaVar containing the number of events associated to a sum of RooProducts
+///
+/// \param[in] w pointer to the input RooWorspace
+/// \param[in] components list of the components (samples) to be summed up
+/// \param[in] region channel (region) to consider
+/// \param[in] rangeName name of the variable range to be used for the integral (ignored if empty)
+/// \param[out] form_frac pointer to the output RooFormulaVar
+///
+/// For a given list of samples in a region ('components'), we create a \c RooRealSumPdf representing
+/// the sum of the corresponding components, and return its integral in the form of a RooFormulaVar
+/// so that getVal() will tell us the number of events associated to this sum.
+/// A range for the integral can also be specified
 RooFormulaVar *getComponent(RooWorkspace *w, std::vector<TString> components, TString region, TString rangeName = "")
 {
-   // for a given list of samples in a region ('components'), we create a RooRealSumPdf representing
-   // the sum of the corresponding components, and return its integral in the form of a RooFormulaVar
-   // so that getVal() will tell us the number of events associated to this sum
-   // a range for the integral can also be specified
    if (components.size() < 1) {
       throw std::runtime_error("component list is empty");
    }
 
-   RooCategory *cat = w->cat("channelCat");
+   RooCategory *cat = w->cat("channelCat"); // name hardcoded in HistFactory
 
-   RooSimultaneous *simPdf = dynamic_cast<RooSimultaneous *>(w->pdf("simPdf"));
+   RooSimultaneous *simPdf = dynamic_cast<RooSimultaneous *>(w->pdf("simPdf")); // name hardcoded in HistFactory
    RooAbsPdf *      regPdf = simPdf->getPdf(region);
 
-   RooAbsData *simData = w->data("obsData");
-   RooAbsData *regData = simData->reduce(TString("channelCat==channelCat::" + region));
+   RooAbsData *simData = w->data("obsData"); // name hardcoded in HistFactory
+   RooAbsData *regData = simData->reduce(TString("channelCat==channelCat::" + region)); // name hardcoded in HistFactory
 
-   RooRealVar *obs      = dynamic_cast<RooRealVar *>(regPdf->getObservables(regData)->find("obs_x_" + region));
-   RooRealVar *binWidth = dynamic_cast<RooRealVar *>(regPdf->getVariables()->find("binWidth_obs_x_" + region + "_0"));
+   RooRealVar *obs      = dynamic_cast<RooRealVar *>(regPdf->getObservables(regData)->find("obs_x_" + region)); // name hardcoded in HistFactory
+   RooRealVar *binWidth = dynamic_cast<RooRealVar *>(regPdf->getVariables()->find("binWidth_obs_x_" + region + "_0")); // name hardcoded in HistFactory
 
    // retrieve components
 
@@ -154,8 +195,8 @@ RooFormulaVar *getComponent(RooWorkspace *w, std::vector<TString> components, TS
    }
 
    if (compFuncList.getSize() == 0 || compCoefList.getSize() == 0 || compFuncList.getSize() != compCoefList.getSize()) {
-      return 0;
       throw std::runtime_error("something went wrong when fetching components");
+      //return 0;
    }
 
    // create RRSPdf and integral
@@ -181,6 +222,15 @@ RooFormulaVar *getComponent(RooWorkspace *w, std::vector<TString> components, TS
    return form_frac;
 }
 
+/// Sum up components in different regions
+///
+/// \param[in] w pointer to the input RooWorspace
+/// \param[in] components list of the components (samples) to be summed up
+/// \param[in] regions channels (regions) to consider
+/// \param[in] rangeName name of the variable range to be used for the integral (ignored if empty)
+/// \param[out] form_frac pointer to the output RooFormulaVar
+///
+/// See the single-region version of getComponent() for more details
 RooFormulaVar *getComponent(RooWorkspace *w, std::vector<TString> components, std::vector<TString> regions,
                             TString rangeName = "")
 {
@@ -199,12 +249,19 @@ RooFormulaVar *getComponent(RooWorkspace *w, std::vector<TString> components, st
    return new RooFormulaVar("sum_var", form, list);
 }
 
-std::vector<TString> getFreeParameters(RooWorkspace *w)
+/// Get list of free parameters of a p.d.f.
+///
+/// \param[in] w pointer to the input RooWorspace
+/// \param[in] pdfName name of the p.d.f.
+/// \param[in] dataName name of the dataset (used to determine observables)
+/// \param[out] result vector of nuisance parameter names
+/// 
+/// Gets list of free parameters (i.e. non-constant parameters) given a pdf and a dataset (which
+/// is used to determine which ones of the pdf free parameters are actually observables).
+std::vector<TString> getFreeParameters(RooWorkspace *w, TString pdfName = "simPdf", TString dataName = "obsData")
 {
-   // gets list of free parameters (i.e. non-constant parameters) given a pdf and a dataset (which
-   // is used to determine which ones of the pdf free parameters are actually observables)
    // TODO: use RooStats::RemoveConstantParameters instead of the manual thing...
-   RooArgSet *NPs = w->pdf("simPdf")->getParameters(*w->data("obsData"));
+   RooArgSet *NPs = w->pdf(pdfName)->getParameters(*w->data(dataName));
 
    TIterator *itr = NPs->createIterator();
 
@@ -214,7 +271,7 @@ std::vector<TString> getFreeParameters(RooWorkspace *w)
 
    while (np) {
       RooAbsArg *raa = dynamic_cast<RooAbsArg *>(np);
-      std::cout << "VALERIO: NP is " << raa->GetName() << " and constant=" << raa->isConstant() << std::endl;
+      std::cout << "NP named " << raa->GetName() << " has constant=" << raa->isConstant() << std::endl;
       if (raa->isConstant() == kFALSE) result.push_back(np->GetName());
       np = itr->Next();
    }
@@ -222,14 +279,23 @@ std::vector<TString> getFreeParameters(RooWorkspace *w)
    return result;
 }
 
+/// Evaluate the impact of a nuisance parameter on a \c RooFormulaVar (without fit)
+///
+/// \param[in] param name of the nuisance parameter (NP)
+/// \param[in] w pointer to the input RooWorspace
+/// \param[in] impact pointer to the RooFormulaVar used to calculate the impact
+/// \param[in] useErrorVal if \c kTRUE, will use fitted errors as plus and minus NP variations; otherwise, will use +/- 1
+/// \param[out] result pair of impact of up and down variation on the provided RooFormulaVar
+/// 
+/// Uses a given RooFormulaVar (typically the output of getComponent) to evaluate the impact, without fit, of
+/// varying a nuisance parameter up or down by one sigma. The variation is done either manually
+/// by \c avg +/- 1 (\c useErrorVar set to \c false) or by \c avg +/- 1 sigma (\c useErrorVar set to \c true)
+///
+/// Note that, for OverallSys uncertainties, the output of this function must be ~identical to what specified in the HistFactory's
+/// XMLs.
 std::pair<Double_t, Double_t> getParameterImpactNoFit(TString param, RooWorkspace *w, RooFormulaVar *impact,
                                                       Bool_t useErrorVar = kFALSE)
 {
-   // uses a given RooFormulaVar (output of getComponent) to evaluate the impact, without fit, of
-   // varying a nuisance parameter UP or DOWN by one sigma
-   // variation is done either manually by +/- 1 (useErrorVar=false) or by avg +/- 1 sigma (useErrorVar=true)
-   // NOTE: for OverallSys uncertainties, the output of this function must be ~identical to what's in the HistFactory's
-   // XMLs
    std::pair<Double_t, Double_t> result;
 
    // TODO: if useErrorVar = kTRUE, this makes sense only for alpha_ nuisance parameters
@@ -248,13 +314,21 @@ std::pair<Double_t, Double_t> getParameterImpactNoFit(TString param, RooWorkspac
    return result;
 }
 
+/// Fits the pdf of the HistFactory workspace only in a subset of the available channels (regions)
+///
+/// \param[in] w pointer to the input RooWorkspace
+/// \param[in] regions vector of names of channels (regions) to be considered in the fit
+/// \param[in] saveResult if set to \c kTRUE, the RooFitResult is returned
+/// \param[in] doMinos if set to \c kTRUE, Minos is run (much slower!)
+///
+/// To do the job, this function defines a new simultaneous PDF and a new dataset, including only fit regions.
 RooFitResult *fitPdfInRegions(RooWorkspace *w, std::vector<TString> regions, bool saveResult = false,
                               Bool_t doMinos = kTRUE)
 {
-   // fits simPdf only in a subset of regions
-   // (strategy: define a new simultaneous PDF and a new dataset, including only fit regions)
    // TODO: use the better fitting technique used by HistFitter's Util::FitPdf
    // (in https://svnweb.cern.ch/trac/atlasphys/browser/Physics/SUSY/Analyses/HistFitter/trunk/src/Utils.cxx)
+
+   // NOTE: all pdf/object names are specified by HistFactory by default, that's why they are hardcoded
 
    // to do so, a temporary PDF and a temporary dataset have to be built
    RooSimultaneous *pdfFull  = dynamic_cast<RooSimultaneous *>(w->pdf("simPdf"));
@@ -264,6 +338,8 @@ RooFitResult *fitPdfInRegions(RooWorkspace *w, std::vector<TString> regions, boo
    RooSimultaneous *pdf  = pdfFull;
    RooDataSet *     data = dynamic_cast<RooDataSet *>(dataFull);
 
+
+   // determine useful terms
    std::vector<RooAbsPdf *>  pdfVec;
    std::vector<RooDataSet *> dataVec;
 
@@ -283,6 +359,7 @@ RooFitResult *fitPdfInRegions(RooWorkspace *w, std::vector<TString> regions, boo
    if (dataVec.size() == 0 || pdfVec.size() == 0 || dataVec.size() != pdfVec.size() || dataVec.size() != regions.size())
       throw std::runtime_error("Error in specified regions");
 
+   // merge terms
    const TString nickname = join("_", regions);
    data                   = dynamic_cast<RooDataSet *>(dataVec[0]->Clone("obsDataReduced_" + nickname));
    for (UInt_t i = 1; i < dataVec.size(); i++) data->append(*dataVec[i]);
@@ -304,6 +381,37 @@ RooFitResult *fitPdfInRegions(RooWorkspace *w, std::vector<TString> regions, boo
    return fitResult;
 }
 
+/// Obtain a table containing the impact, on the normalisation of a few samples in given regions, of nuisance parameters.
+/// 
+/// \param[in] inputFile name of the input file
+/// \param[in] workspaceName name of the input workspace
+/// \param[in] modelConfigName name of the input \c ModelConfig
+/// \param[in] dataName name of the dataset
+/// \param[in] workspaceTag prefix for the output ROOT file
+/// \param[in] outputFolder path under which the output ROOT file will be stored; it will be created if it does not exist
+/// \param[in] samples comma-separated list of samples ("components") to consider
+/// \param[in] evaluationRegions comma-separated list of regions ("channels") for which impacts must be calculated
+/// \param[in] fitRegions comma-separated list of regions to be used in the fit
+///
+/// Let us suppose you want to evaluate the impact of a nuisance parameter (NP) on the signal region yield of the sum of
+/// all backgrounds, when the fit is performed using only control region data. You would then have
+/// \code
+/// samples = "bkg1,bkg2,bkg3"
+/// evaluationRegions = "SR"
+/// fitRegions = "CR1,CR2,CR3"
+/// \endcode
+/// and this function will print the impact of all nuisance parameters on the sum of the yields of bkg1, bkg2 and bkg3
+/// in the region "SR".
+///
+/// This impact is defined for each NP as the change in the bkg1+bkg2+bkg3 yield evaluated in the SR, in the following way:
+///   -# a fit to CR1+CR2+CR3 is performed, and the yield is saved in memory (let us denote it by \c std)
+///   -# the NP is set to <bestfit>+<onesigma>, where <bestfit> and <onesigma> are determined by the fit above
+///   -# the NP is set to constant and the fit is performed again
+///   -# the new yield is saved in memory (let us denote it by \c up)
+///   -# the "up" impact of this NP is then evaluated by the ratio between \c up and \c std
+///   -# the procedure is repeated for the "down" variation
+///
+/// Output is also written in the folder outputFolder/np_impact/workspaceTag_systtable.tex
 void getSystTable(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName,
                   TString workspaceTag, TString outputFolder, TString samples, TString evaluationRegions,
                   TString fitRegions)
@@ -312,9 +420,11 @@ void getSystTable(const char *inputFile, const char *workspaceName, const char *
    RooWorkspace *         w  = dynamic_cast<RooWorkspace *>(f->Get(workspaceName));
    RooStats::ModelConfig *mc = dynamic_cast<RooStats::ModelConfig *>(w->obj(modelConfigName));
 
+   outputFolder += "/np_impact/";
    system("mkdir -p " + outputFolder);
-   FILE *outfile = fopen(outputFolder + "/" + workspaceTag + "_systtable_" + ".tex", "w"); // file for tex output
+   FILE *outfile = fopen(outputFolder + workspaceTag + "_systtable.tex", "w"); // file for tex output
 
+   // transform strings in vectors via tokenization
    std::vector<TString> samplesVec     = getTokens(samples, ",");
    std::vector<TString> fitRegionsVec  = getTokens(fitRegions, ",");
    std::vector<TString> evalRegionsVec = getTokens(evaluationRegions, ",");
@@ -340,13 +450,13 @@ void getSystTable(const char *inputFile, const char *workspaceName, const char *
    w->loadSnapshot(snapBeforeFit); // crucial to do this every time
 
    // fetch raw yields in each region from the likelihood
-   map<TString, Double_t> original_impact;
-   for (auto reg : evalRegionsVec) original_impact[reg] = impactRFV[reg]->getVal();
+   map<TString, Double_t> prefit_yield;
+   for (auto reg : evalRegionsVec) prefit_yield[reg] = impactRFV[reg]->getVal();
 
    myCout << "\n\n\nCONSIDERING ONLY SAMPLES " << join(" ", samplesVec) << std::endl;
    myCout << "IMPACTS are given in %, in the form (DOWN, UP) where DOWN means NP goes DOWN by 1 SIGMA, etc"
           << std::endl;
-   for (auto reg : evalRegionsVec) myCout << "NOMINAL " << reg << " EVENT YIELD: " << original_impact[reg] << std::endl;
+   for (auto reg : evalRegionsVec) myCout << "NOMINAL " << reg << " EVENT YIELD: " << prefit_yield[reg] << std::endl;
    myCout << "\nPRE-FIT IMPACTS" << std::endl;
    myCout << left << setw(46) << setfill(' ') << "SYSTEMATIC";
    myCout << left << setw(20) << setfill(' ');
@@ -363,10 +473,10 @@ void getSystTable(const char *inputFile, const char *workspaceName, const char *
       // fetch impacted yields from the likelihood
       map<TString, std::pair<Double_t, Double_t>> nofit_impact;
       for (auto reg : evalRegionsVec) {
-         nofit_impact[reg] = getParameterImpactNoFit(np, w, impactRFV[reg], kFALSE);
+         nofit_impact[reg] = getParameterImpactNoFit(np, w, impactRFV[reg], kFALSE); // kFALSE = use +/- 1 instead of +/- err
 
-         const Float_t down = 100. * (nofit_impact[reg].first / original_impact[reg] - 1);
-         const Float_t up   = 100. * (nofit_impact[reg].second / original_impact[reg] - 1);
+         const Float_t down = 100. * (nofit_impact[reg].first / prefit_yield[reg] - 1);
+         const Float_t up   = 100. * (nofit_impact[reg].second / prefit_yield[reg] - 1);
          myCout << left << setw(46) << setfill(' ') << np;
          myCout << left << setw(20) << setfill(' ') << "(" + prd(up, 2) + "%, " + prd(down, 2) + "%)";
          fprintf(outfile, " & ($%2.2f$, $%2.2f$)", up, down);
@@ -496,6 +606,9 @@ void getSystTable(const char *inputFile, const char *workspaceName, const char *
          }
       }
       myCout << "Total SYST error: " << sqrt(total_error) * 100 << "%" << endl;
+      
+      // we do this in preparation for the next region
+      w->loadSnapshot(snapBeforeFit);
    }
 
    // printout (avoids MINUIT verbosity)
