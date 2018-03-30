@@ -39,11 +39,11 @@ public:
 std::vector<TString> getTokens(TString line, TString delim)
 {
    std::vector<TString> vtokens;
-   TObjArray* tokens = TString(line).Tokenize(delim); //delimiters
+   TObjArray *          tokens = TString(line).Tokenize(delim); // delimiters
    if (tokens->GetEntriesFast()) {
-      TIter iString(tokens);
-      TObjString* os = 0;
-      while ((os = (TObjString*)iString())) {
+      TIter       iString(tokens);
+      TObjString *os = 0;
+      while ((os = (TObjString *)iString())) {
          vtokens.push_back(os->GetString().Data());
       }
    }
@@ -197,15 +197,6 @@ RooFormulaVar *getComponent(RooWorkspace *w, std::vector<TString> components, st
       list.add(*getComponent(w, components, region, rangeName));
    }
    return new RooFormulaVar("sum_var", form, list);
-   // return sum_var;
-
-   /*RooFormulaVar *sum_var = 0;
-   for (TString region: regions){
-       RooFormulaVar* region_var = getComponent(w, components, region, rangeName);
-       if (sum_var) sum_var = new RooFormulaVar("form_fracError", "@0 + @1", RooArgList(*region_var, *sum_var));
-       else sum_var = region_var;
-   }
-   return sum_var;*/
 }
 
 std::vector<TString> getFreeParameters(RooWorkspace *w)
@@ -313,27 +304,32 @@ RooFitResult *fitPdfInRegions(RooWorkspace *w, std::vector<TString> regions, boo
    return fitResult;
 }
 
-void getSystTable(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName, TString workspaceTag, TString outputFolder, TString evaluationRegions, TString fitRegions)
+void getSystTable(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName,
+                  TString workspaceTag, TString outputFolder, TString samples, TString evaluationRegions,
+                  TString fitRegions)
 {
-   TFile *       f = TFile::Open(inputFile);
-   RooWorkspace *w = dynamic_cast<RooWorkspace *>(f->Get(workspaceName));
+   TFile *                f  = TFile::Open(inputFile);
+   RooWorkspace *         w  = dynamic_cast<RooWorkspace *>(f->Get(workspaceName));
+   RooStats::ModelConfig *mc = dynamic_cast<RooStats::ModelConfig *>(w->obj(modelConfigName));
 
+   system("mkdir -p " + outputFolder);
    FILE *outfile = fopen(outputFolder + "/" + workspaceTag + "_systtable_" + ".tex", "w"); // file for tex output
 
-   std::vector<TString>                    fitRegionsVec = getTokens(fitRegions, ",");
-   std::map<TString, std::vector<TString>> evalRegionsVec = getTokens(evaluationRegions, ",");
+   std::vector<TString> samplesVec     = getTokens(samples, ",");
+   std::vector<TString> fitRegionsVec  = getTokens(fitRegions, ",");
+   std::vector<TString> evalRegionsVec = getTokens(evaluationRegions, ",");
 
    // this marvellous object is what allows us to know the yield for a given sample (or combination of samples) in a
    // region taking into account all scale factors, systematics...
    map<TString, RooFormulaVar *> impactRFV;
-   for (auto reg: evalRegionsVec) impactRFV[reg] = getComponent(w, samples, reg);
+   for (auto reg : evalRegionsVec) impactRFV[reg] = getComponent(w, samplesVec, reg);
 
    // list of NPs (actually it can include more than the usual NPs: it contains the signal strength!)
    std::vector<TString> NPs = getFreeParameters(w);
 
    // save state-of-the-art pre-fit parameter settings
    const TString snapBeforeFit = "adummyname"; // sigh
-   w->saveSnapshot(snapBeforeFit, *w->pdf("simPdf")->getParameters(*w->data(dataName));
+   w->saveSnapshot(snapBeforeFit, *mc->GetPdf()->getParameters(*w->data(dataName)));
 
    std::stringstream myCout; // let's print everything at the end of the job
 
@@ -343,11 +339,11 @@ void getSystTable(const char *inputFile, const char *workspaceName, const char *
 
    w->loadSnapshot(snapBeforeFit); // crucial to do this every time
 
-   // fetch raw SR/CR yields from the likelihood
+   // fetch raw yields in each region from the likelihood
    map<TString, Double_t> original_impact;
-   for (auto reg: evalRegionsVec) original_impact[reg] = impactRFV[reg]->getVal();
+   for (auto reg : evalRegionsVec) original_impact[reg] = impactRFV[reg]->getVal();
 
-   myCout << "\n\n\nCONSIDERING ONLY SAMPLES " << join(" ", samples) << std::endl;
+   myCout << "\n\n\nCONSIDERING ONLY SAMPLES " << join(" ", samplesVec) << std::endl;
    myCout << "IMPACTS are given in %, in the form (DOWN, UP) where DOWN means NP goes DOWN by 1 SIGMA, etc"
           << std::endl;
    for (auto reg : evalRegionsVec) myCout << "NOMINAL " << reg << " EVENT YIELD: " << original_impact[reg] << std::endl;
@@ -357,7 +353,6 @@ void getSystTable(const char *inputFile, const char *workspaceName, const char *
    for (TString reg : evalRegionsVec) myCout << left << setw(20) << setfill(' ') << reg;
    myCout << std::endl;
 
-   printTableBegin(outfile);
    for (auto np : NPs) {
       if (!is_np_constrained(np)) {
          std::cout << "WARNING: NP to be ignored in pre-fit printouts found, named " << np << std::endl;
@@ -368,18 +363,17 @@ void getSystTable(const char *inputFile, const char *workspaceName, const char *
       // fetch impacted yields from the likelihood
       map<TString, std::pair<Double_t, Double_t>> nofit_impact;
       for (auto reg : evalRegionsVec) {
-        nofit_impact[reg] = getParameterImpactNoFit(np, w, impactRFV[reg], kFALSE);
+         nofit_impact[reg] = getParameterImpactNoFit(np, w, impactRFV[reg], kFALSE);
 
-           const Float_t down = 100. * (nofit_impact[reg].first / original_impact[reg] - 1);
+         const Float_t down = 100. * (nofit_impact[reg].first / original_impact[reg] - 1);
          const Float_t up   = 100. * (nofit_impact[reg].second / original_impact[reg] - 1);
+         myCout << left << setw(46) << setfill(' ') << np;
          myCout << left << setw(20) << setfill(' ') << "(" + prd(up, 2) + "%, " + prd(down, 2) + "%)";
          fprintf(outfile, " & ($%2.2f$, $%2.2f$)", up, down);
       }
-      fputs(" \\\\ \\noalign{\\smallskip} \n", outfile);
       myCout << std::endl;
    }
    myCout << std::endl;
-   printTableEnd(outfile);
 
    /////////////////
    // FIT         //
@@ -389,121 +383,120 @@ void getSystTable(const char *inputFile, const char *workspaceName, const char *
    w->loadSnapshot(snapBeforeFit);
    RooFitResult *fitResult = fitPdfInRegions(w, fitRegionsVec, true);
    fitResult->Print();
-   for (auto reg: evalRegionsVec) {
-   const Double_t full_fit_impact = impactRFV[reg]->getVal();
-   const Double_t full_fit_err    = impactRFV[reg]->getPropagatedError(*fitResult);
+   for (auto reg : evalRegionsVec) {
+      const Double_t full_fit_impact = impactRFV[reg]->getVal();
+      const Double_t full_fit_err    = impactRFV[reg]->getPropagatedError(*fitResult);
 
-   myCout << "FIT VALUES" << std::endl;
-   // save impact and param values
-   map<TString, ParamFitResult> bestfit;
-   for (auto np : NPs) {
-      const Double_t param_bestfit_val  = w->var(np)->getVal();
-      const Double_t param_bestfit_up   = param_bestfit_val + w->var(np)->getErrorHi(); // NOTE: assumes one ran Minos
-      const Double_t param_bestfit_down = param_bestfit_val + w->var(np)->getErrorLo();
-      ParamFitResult param_bestfit(param_bestfit_val, param_bestfit_up, param_bestfit_down);
-      bestfit[np] = param_bestfit;
-      if (np.Contains("alpha"))
-         myCout << left << setw(46) << setfill(' ') << np;
-      else if (np.Contains("gamma"))
-         myCout << left << setw(33) << setfill(' ') << np;
-      else
-         myCout << left << setw(7) << setfill(' ') << np;
-      myCout << left << setw(10) << setfill(' ') << " = " + prd(param_bestfit_val, 3);
-      myCout << left << setw(10) << setfill(' ') << " + " + prd(w->var(np)->getErrorHi(), 3);
-      myCout << left << setw(10) << setfill(' ') << " - " + prd(w->var(np)->getErrorLo() * -1, 3);
-      myCout << endl;
-   }
-
-   /////////////////////
-   // POST-FIT IMPACT //
-   /////////////////////
-
-   myCout << "POST-FIT IMPACTS when fitting only in " << join(" ", fitRegionsVec) << std::endl;
-
-   printTableBegin(outfile);
-
-   map<TString, float> np_error;
-   for (auto np : NPs) {
-      // make sure that we don't evaluate the post-fit impact of a parameter which
-      // was not part of the original fit (e.g. SR-only NP, and CR-only fit)
-      if (fitResult->floatParsFinal().index(np) < 0) {
-         std::cout << "WARNING: not-fitted NP to be ignored in post-fit printouts found, named " << np << std::endl;
-         continue;
+      myCout << "FIT VALUES" << std::endl;
+      // save impact and param values
+      map<TString, ParamFitResult> bestfit;
+      for (auto np : NPs) {
+         const Double_t param_bestfit_val = w->var(np)->getVal();
+         const Double_t param_bestfit_up  = param_bestfit_val + w->var(np)->getErrorHi(); // NOTE: assumes one ran Minos
+         const Double_t param_bestfit_down = param_bestfit_val + w->var(np)->getErrorLo();
+         ParamFitResult param_bestfit(param_bestfit_val, param_bestfit_up, param_bestfit_down);
+         bestfit[np] = param_bestfit;
+         if (np.Contains("alpha"))
+            myCout << left << setw(46) << setfill(' ') << np;
+         else if (np.Contains("gamma"))
+            myCout << left << setw(33) << setfill(' ') << np;
+         else
+            myCout << left << setw(7) << setfill(' ') << np;
+         myCout << left << setw(10) << setfill(' ') << " = " + prd(param_bestfit_val, 3);
+         myCout << left << setw(10) << setfill(' ') << " + " + prd(w->var(np)->getErrorHi(), 3);
+         myCout << left << setw(10) << setfill(' ') << " - " + prd(w->var(np)->getErrorLo() * -1, 3);
+         myCout << endl;
       }
 
-      // now, fix this parameter to +1 sigma (TODO: check also +1 absolute?)
-      w->loadSnapshot(snapBeforeFit);
-      w->var(np)->setVal(bestfit[np].val_up);
-      w->var(np)->setConstant(kTRUE);
-      fitPdfInRegions(w, fitRegionsVec, kTRUE, kFALSE); // VALERIO's speedup
-      const Double_t plus1_fit_impact = impactRFV[SR]->getVal();
+      /////////////////////
+      // POST-FIT IMPACT //
+      /////////////////////
 
-      // now, fix this parameter to -1 sigma (TODO: check also -1 absolute?)
-      w->loadSnapshot(snapBeforeFit);
-      w->var(np)->setVal(bestfit[np].val_down);
-      w->var(np)->setConstant(kTRUE);
-      fitPdfInRegions(w, fitRegionsVec, kTRUE, kFALSE); // VALERIO's speedup
-      const Double_t minus1_fit_impact = impactRFV[SR]->getVal();
+      myCout << "POST-FIT IMPACTS when fitting only in " << join(" ", fitRegionsVec) << std::endl;
 
-      // finally, evaluate impact!
-      const float down = 100. * (minus1_fit_impact / full_fit_impact - 1);
-      const float up   = 100. * (plus1_fit_impact / full_fit_impact - 1);
-
-      // average up and down for total uncertainty calculation
-      np_error[np] = 0.5 * ((plus1_fit_impact / full_fit_impact - 1) - (minus1_fit_impact / full_fit_impact - 1));
-
-      // but print things only if this is not a free fit parameter!
-      if (is_np_constrained(np)) {
-         myCout << left << setw(46) << setfill(' ') << np;
-         myCout << left << setw(20) << setfill(' ') << "(" + prd(up, 2) + "%, " + prd(down, 2) + "%)";
-         myCout << std::endl;
-
-         fprintf(outfile, "%s & ($%2.2f$, $%2.2f$) \\\\ \\noalign{\\smallskip} \n", (np.ReplaceAll("_", "\\_")).Data(),
-                 up, down);
-
-      } else {
-         std::cout << "WARNING: free NP to be ignored in post-fit printouts found, named " << np << std::endl;
-      }
-   }
-
-   printTableEnd(outfile);
-   myCout << std::endl << "{";
-   for (auto np : NPs) myCout << " " << np_error[np];
-   myCout << "}" << std::endl;
-
-   // fit without nuisance parameters
-   w->loadSnapshot(snapBeforeFit);
-
-   for (auto np : NPs)
-      if (is_np_constrained(np)) w->var(np)->setConstant(kTRUE);
-   RooFitResult * frozen_fitResult  = fitPdfInRegions(w, fitRegions, true);
-   const Double_t frozen_fit_impact = impactRFV[SR]->getVal();
-   const Double_t frozen_fit_err    = impactRFV[SR]->getPropagatedError(*frozen_fitResult);
-
-   myCout << "FITTED EVENT YIELD: " << full_fit_impact << std::endl;
-   myCout << "NO-NP   EVENT YIELD: " << frozen_fit_impact << std::endl;
-   myCout << "Total [?] error: " << 100. * full_fit_err / full_fit_impact << "%" << std::endl;
-   myCout << "Stat [?]  error: " << 100. * frozen_fit_err / full_fit_impact << "%" << std::endl;
-   // myCout << "Syst  error: " << 100. * (full_fit_err - frozen_fit_err)/full_fit_impact << "%" << std::endl;
-
-   TMatrixDSym CoVarMatrix(fitResult->covarianceMatrix());
-   Double_t    total_error = 0;
-   for (unsigned int i = 0; i < NPs.size(); i++) {
-      for (unsigned int j = i; j < NPs.size(); j++) {
-         const int idx_i = fitResult->floatParsFinal().index(NPs[i]);
-         const int idx_j = fitResult->floatParsFinal().index(NPs[j]);
-         if (idx_i < 0 || idx_j < 0) {
-            std::cout << "WARNING: ignoring covariance matrix term " << NPs[i] << " " << idx_i << " " << NPs[j] << " "
-                      << idx_j << std::endl;
+      map<TString, float> np_error;
+      for (auto np : NPs) {
+         // make sure that we don't evaluate the post-fit impact of a parameter which
+         // was not part of the original fit (e.g. SR-only NP, and CR-only fit)
+         if (fitResult->floatParsFinal().index(np) < 0) {
+            std::cout << "WARNING: not-fitted NP to be ignored in post-fit printouts found, named " << np << std::endl;
             continue;
          }
-         //	       myCout << NPs[i] << " impt = " <<  np_error[NPs[i]] << ", "
-         //		      << NPs[j] << " impt = " <<  np_error[NPs[j]] << ", COV = " <<  CoVarMatrix(idx_i,idx_j) <<  ", CORR =
-         //" << fitResult->correlation(NPs[i], NPs[j]) << std::endl;
-         total_error += np_error[NPs[i]] * np_error[NPs[j]] * CoVarMatrix(idx_i, idx_j);
+
+         // now, fix this parameter to +1 sigma (TODO: check also +1 absolute?)
+         w->loadSnapshot(snapBeforeFit);
+         w->var(np)->setVal(bestfit[np].val_up);
+         w->var(np)->setConstant(kTRUE);
+         fitPdfInRegions(w, fitRegionsVec, kTRUE, kFALSE); // VALERIO's speedup
+         const Double_t plus1_fit_impact = impactRFV[reg]->getVal();
+
+         // now, fix this parameter to -1 sigma (TODO: check also -1 absolute?)
+         w->loadSnapshot(snapBeforeFit);
+         w->var(np)->setVal(bestfit[np].val_down);
+         w->var(np)->setConstant(kTRUE);
+         fitPdfInRegions(w, fitRegionsVec, kTRUE, kFALSE); // VALERIO's speedup
+         const Double_t minus1_fit_impact = impactRFV[reg]->getVal();
+
+         // finally, evaluate impact!
+         const float down = 100. * (minus1_fit_impact / full_fit_impact - 1);
+         const float up   = 100. * (plus1_fit_impact / full_fit_impact - 1);
+
+         // average up and down for total uncertainty calculation
+         np_error[np] = 0.5 * ((plus1_fit_impact / full_fit_impact - 1) - (minus1_fit_impact / full_fit_impact - 1));
+
+         // but print things only if this is not a free fit parameter!
+         if (is_np_constrained(np)) {
+            myCout << left << setw(46) << setfill(' ') << np;
+            myCout << left << setw(20) << setfill(' ') << "(" + prd(up, 2) + "%, " + prd(down, 2) + "%)";
+            myCout << std::endl;
+
+            fprintf(outfile, "%s & ($%2.2f$, $%2.2f$) \\\\ \\noalign{\\smallskip} \n",
+                    (np.ReplaceAll("_", "\\_")).Data(), up, down);
+
+         } else {
+            std::cout << "WARNING: free NP to be ignored in post-fit printouts found, named " << np << std::endl;
+         }
       }
+
+      myCout << std::endl << "{";
+      for (auto np : NPs) myCout << " " << np_error[np];
+      myCout << "}" << std::endl;
+
+      // fit without nuisance parameters
+      w->loadSnapshot(snapBeforeFit);
+
+      for (auto np : NPs)
+         if (is_np_constrained(np)) w->var(np)->setConstant(kTRUE);
+      RooFitResult * frozen_fitResult  = fitPdfInRegions(w, fitRegionsVec, true);
+      const Double_t frozen_fit_impact = impactRFV[reg]->getVal();
+      const Double_t frozen_fit_err    = impactRFV[reg]->getPropagatedError(*frozen_fitResult);
+
+      myCout << "FITTED EVENT YIELD: " << full_fit_impact << std::endl;
+      myCout << "NO-NP   EVENT YIELD: " << frozen_fit_impact << std::endl;
+      myCout << "Total [?] error: " << 100. * full_fit_err / full_fit_impact << "%" << std::endl;
+      myCout << "Stat [?]  error: " << 100. * frozen_fit_err / full_fit_impact << "%" << std::endl;
+      // myCout << "Syst  error: " << 100. * (full_fit_err - frozen_fit_err)/full_fit_impact << "%" << std::endl;
+
+      TMatrixDSym CoVarMatrix(fitResult->covarianceMatrix());
+      Double_t    total_error = 0;
+      for (unsigned int i = 0; i < NPs.size(); i++) {
+         for (unsigned int j = i; j < NPs.size(); j++) {
+            const int idx_i = fitResult->floatParsFinal().index(NPs[i]);
+            const int idx_j = fitResult->floatParsFinal().index(NPs[j]);
+            if (idx_i < 0 || idx_j < 0) {
+               std::cout << "WARNING: ignoring covariance matrix term " << NPs[i] << " " << idx_i << " " << NPs[j]
+                         << " " << idx_j << std::endl;
+               continue;
+            }
+            //	       myCout << NPs[i] << " impt = " <<  np_error[NPs[i]] << ", "
+            //		      << NPs[j] << " impt = " <<  np_error[NPs[j]] << ", COV = " <<  CoVarMatrix(idx_i,idx_j) <<  ",
+            // CORR
+            //" << fitResult->correlation(NPs[i], NPs[j]) << std::endl;
+            total_error += np_error[NPs[i]] * np_error[NPs[j]] * CoVarMatrix(idx_i, idx_j);
+         }
+      }
+      myCout << "Total SYST error: " << sqrt(total_error) * 100 << "%" << endl;
    }
-   myCout << "Total SYST error: " << sqrt(total_error) * 100 << "%" << endl;
 
    // printout (avoids MINUIT verbosity)
    std::cout << myCout.str() << std::endl;
