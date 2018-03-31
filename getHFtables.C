@@ -30,7 +30,7 @@ R__LOAD_LIBRARY(HistFactoryInspector.C+)
 /// The function, as is, simply prints outputs on screen. If you want to parse them more conveniently, for example
 /// inserting them in CSV tables, python dictionaries of LaTeX files, please see EXOSTATS::HistFactoryInspector::getYields()
 /// and EXOSTATS::HistFactoryInspector::getYields() for details on how to read the output of these functions.
-void getSystTable(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName, TString workspaceTag, TString outputFolder, TString evalRegions, TString fitRegions, Bool_t doYields = kTRUE, Bool_t doImpacts = kFALSE, TString samplesForImpact = "", Int_t debugLevel = 2)
+void getHFtables(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName, TString workspaceTag, TString outputFolder, TString evalRegions, TString fitRegions, Bool_t doYields = kTRUE, Bool_t doImpacts = kFALSE, TString samplesForImpact = "", Int_t debugLevel = 2)
 {
   const TString rangeName = ""; // do not use
 

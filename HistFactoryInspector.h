@@ -69,9 +69,11 @@ protected:
    RooFormulaVar *retrieveYieldRFV(std::vector<TString> regions, std::vector<TString> components);
    RooFormulaVar *retrieveYieldRFV(TString region, std::vector<TString> components);
    RooFitResult * fitPdfInRegions(std::vector<TString> regions, Bool_t saveResult = kFALSE, Bool_t doMinos = kTRUE);
-   Double_t       getPropagatedError(RooAbsReal *var, const RooFitResult &fitResult, const Bool_t doAsym);
-   RooArgList     getFloatParList(const RooAbsPdf &pdf, const RooArgSet &obsSet);
-   void resetError(const RooArgList &parList, const RooArgList &vetoList = RooArgList());
+   std::pair<Double_t, Double_t> getYieldUpDown(TString param, RooFormulaVar *yield, Bool_t useErrorVar = kFALSE);
+   std::vector<TString>          getFreeParameters();
+   Double_t   getPropagatedError(RooAbsReal *var, const RooFitResult &fitResult, const Bool_t doAsym);
+   RooArgList getFloatParList(const RooAbsPdf &pdf, const RooArgSet &obsSet);
+   void       resetError(const RooArgList &parList, const RooArgList &vetoList = RooArgList());
 
 private:
    Int_t                m_debugLevel;

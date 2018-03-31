@@ -61,6 +61,21 @@ TString join(TString separator, std::vector<TString> vec)
    return result;
 }
 
+////////////////////////////////////
+/// Convert a double into a string with fixed number of digits after the decimal point
+///
+/// \param[in] x the number
+/// \param[in] decDigits the number of digits
+/// \param[out] ss a string
+TString prd(const double x, const int decDigits)
+{
+   stringstream ss;
+   ss << fixed;
+   ss.precision(decDigits); // set # places after decimal
+   ss << x;
+   return ss.str();
+}
+
 EXOSTATS::HistFactoryInspector::HistFactoryInspector()
 {
    m_debugLevel      = 2;
@@ -159,7 +174,7 @@ EXOSTATS::YieldTable EXOSTATS::HistFactoryInspector::getYields(Bool_t asymErrors
 {
    // prefit
    std::stringstream myCout; // let's print everything at the end of the job, to avoid being flooded by RooFit printouts
-   myCout << "\n\n\nPRE-FIT\n*****************\n\n";
+   myCout << "\n\n\nPRE-FIT YIELDS\n*****************\n\n";
    m_w->loadSnapshot(m_prefitSnap); // crucial!
 
    std::map<TString, std::map<TString, RooFormulaVar *>> RFV_map;
@@ -196,7 +211,7 @@ EXOSTATS::YieldTable EXOSTATS::HistFactoryInspector::getYields(Bool_t asymErrors
    RooFitResult *fitResult = fitPdfInRegions(m_fitRegions, kTRUE, kTRUE);
 
    // postfit
-   myCout << "\n\n\nPOST-FIT\n*****************\n\n";
+   myCout << "\n\n\nPOST-FIT YIELDS\n*****************\n\n";
    result.second = YieldTableElement();
    for (auto kv : m_samples) {
       auto reg = kv.first;
@@ -230,7 +245,85 @@ EXOSTATS::YieldTable EXOSTATS::HistFactoryInspector::getYields(Bool_t asymErrors
 
 EXOSTATS::ImpactTable EXOSTATS::HistFactoryInspector::getImpacts(std::vector<TString> samples)
 {
-   return ImpactTable();
+   // prefit
+   std::stringstream myCout; // let's print everything at the end of the job, to avoid being flooded by RooFit printouts
+   myCout << "\n\n\nPRE-FIT IMPACTS\n*****************\n\n";
+   m_w->loadSnapshot(m_prefitSnap); // crucial!
+
+   std::map<TString, RooFormulaVar *> RFV_map; // key: region
+
+   ImpactTable result;
+   result.first = ImpactTableElement();
+   for (auto kv : m_samples) {
+      auto reg = kv.first;
+      myCout << "region: " << reg << std::endl;
+
+      // we will sum up all samples, among those requested, which are present in this regions
+      std::vector<TString> vec;
+      TString              summedSamples = "";
+      for (auto sample : kv.second) {
+         if (std::find(samples.begin(), samples.end(), sample) != samples.end()) {
+            vec.push_back(sample);
+
+            if (summedSamples == "")
+               summedSamples += sample;
+            else
+               summedSamples += " + " + sample;
+         }
+      }
+      myCout << "   - " << summedSamples << ": yield = ";
+      RFV_map[reg]  = retrieveYieldRFV(reg, vec);
+      auto yieldRFV = RFV_map[reg];
+
+      const Double_t rfv_val = yieldRFV->getVal();
+      myCout << rfv_val << std::endl; // we don't retrieve the error
+
+      for (auto np : getFreeParameters()) {
+         auto var                     = getYieldUpDown(np, yieldRFV, kFALSE);
+         result.first[reg][np].first  = var.first / rfv_val - 1;
+         result.first[reg][np].second = var.second / rfv_val - 1;
+         myCout << "        - " << np << ": (up, down) = (" << prd(result.first[reg][np].first * 100, 2) << "%, "
+                << prd(result.first[reg][np].second * 100, 2) << "%)" << std::endl;
+      }
+   }
+
+   /*
+   // fit
+   m_w->loadSnapshot(m_prefitSnap);
+   RooFitResult *fitResult = fitPdfInRegions(m_fitRegions, kTRUE, kTRUE);
+
+   // postfit
+   myCout << "\n\n\nPOST-FIT IMPACTS\n*****************\n\n";
+   result.second = YieldTableElement();
+   for (auto kv : m_samples) {
+      auto reg = kv.first;
+      myCout << "region: " << reg << std::endl;
+      for (auto sample : kv.second) {
+         myCout << "   - " << sample << ": ";
+         auto yieldRFV = RFV_map[reg][sample]; // we re-use the one created for the pre-fit
+
+         const Double_t rfv_val = yieldRFV->getVal();
+         myCout << rfv_val << " +/- ";
+         // const Double_t rfv_err = yieldRFV->getPropagatedError(*fitResult);
+         const Double_t rfv_err = getPropagatedError(yieldRFV, *fitResult, asymErrors);
+         myCout << rfv_err << std::endl;
+
+         result.first[reg][sample].first  = rfv_val;
+         result.first[reg][sample].second = rfv_err;
+      }
+   }
+
+   // garbage collection
+   for (auto kv : RFV_map) {
+      for (auto kv2 : kv.second) {
+         delete kv2.second;
+      }
+   }
+   */
+
+   std::cout << myCout.str() << std::endl;
+
+   return EXOSTATS::YieldTable();
 }
 
 EXOSTATS::ImpactTable EXOSTATS::HistFactoryInspector::getImpacts(TString samples)
@@ -283,7 +376,7 @@ void EXOSTATS::HistFactoryInspector::retrieveRooProductNames(TString region)
 {
    m_products[region].clear();
 
-   const TString rrsPdfName = TString::Format("%s_model", region.Data()); // hardcoded in HistFactory
+   const TString  rrsPdfName = TString::Format("%s_model", region.Data()); // hardcoded in HistFactory
    RooRealSumPdf *rrsPdf = dynamic_cast<RooRealSumPdf *>(m_simPdf->getPdf(region)->getComponents()->find(rrsPdfName));
 
    std::vector<TString> result;
@@ -470,6 +563,66 @@ RooFitResult *EXOSTATS::HistFactoryInspector::fitPdfInRegions(std::vector<TStrin
    return fitResult;
 }
 
+/// Evaluate the effect on a \c RooFormulaVar of changing a nuisance parameter
+///
+/// \param[in] param name of the nuisance parameter (NP)
+/// \param[in] w pointer to the input RooWorspace
+/// \param[in] impact pointer to the RooFormulaVar used to calculate the impact
+/// \param[in] useErrorVal if \c kTRUE, will use fitted errors as plus and minus NP variations; otherwise, will use +/-
+/// 1 \param[out] result pair of impact of up and down variation on the provided RooFormulaVar
+///
+/// Uses a given RooFormulaVar (typically the output of getComponent) to evaluate the impact of
+/// varying a nuisance parameter up or down by one sigma. The variation is done either manually
+/// by \c avg +/- 1 (\c useErrorVar set to \c false) or by \c avg +/- 1 sigma (\c useErrorVar set to \c true)
+///
+/// Note that, for OverallSys uncertainties, the output of this function must be ~identical to what specified in the
+/// HistFactory's XMLs.
+std::pair<Double_t, Double_t> EXOSTATS::HistFactoryInspector::getYieldUpDown(TString param, RooFormulaVar *yield,
+                                                                             Bool_t useErrorVar)
+{
+   std::pair<Double_t, Double_t> result;
+   auto                          var = m_w->var(param);
+
+   const Double_t par_nom  = var->getVal();
+   const Double_t par_up   = par_nom + ((useErrorVar) ? var->getErrorHi() : 1);
+   const Double_t par_down = par_nom + ((useErrorVar) ? var->getErrorLo() : -1);
+
+   var->setVal(par_up);
+   result.first = yield->getVal();
+
+   var->setVal(par_down);
+   result.second = yield->getVal();
+
+   return result;
+}
+
+/// Get list of free parameters of a p.d.f.
+///
+/// \param[out] result vector of nuisance parameter names
+///
+/// Gets list of free parameters (i.e. non-constant parameters)
+std::vector<TString> EXOSTATS::HistFactoryInspector::getFreeParameters()
+{
+   // TODO: use RooStats::RemoveConstantParameters instead of the manual thing...
+   const RooArgSet *NPs = m_mc->GetNuisanceParameters();
+
+   TIterator *itr = NPs->createIterator();
+
+   TObject *np = itr->Next();
+
+   std::vector<TString> result;
+
+   while (np) {
+      RooAbsArg *raa = dynamic_cast<RooAbsArg *>(np);
+      if (m_debugLevel <= 1)
+         std::cout << "NP named " << raa->GetName() << " has constant=" << raa->isConstant() << std::endl;
+      if (raa->isConstant() == kFALSE) result.push_back(np->GetName());
+      np = itr->Next();
+   }
+
+   return result;
+}
+
 /////////////////////////////
 /// Adapted from HistFitter's Util::GetPropagatedError
 Double_t EXOSTATS::HistFactoryInspector::getPropagatedError(RooAbsReal *var, const RooFitResult &fitResult,
@@ -539,8 +692,8 @@ Double_t EXOSTATS::HistFactoryInspector::getPropagatedError(RooAbsReal *var, con
       errVec[i] = sqrt(V(newII, newII));
       for (int j = i; j < paramList.getSize(); j++) {
          int newJ = fpf_idx[j];
-         C(i, j) = V(newII, newJ) / sqrt(V(newII, newII) * V(newJ, newJ));
-         C(j, i) = C(i, j);
+         C(i, j)  = V(newII, newJ) / sqrt(V(newII, newII) * V(newJ, newJ));
+         C(j, i)  = C(i, j);
       }
    }
 
