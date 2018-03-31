@@ -16,6 +16,7 @@ class ModelConfig;
 }
 class RooSimultaneous;
 class RooCategory;
+class RooFitResult;
 
 namespace EXOSTATS {
 typedef std::map<TString, std::map<TString, std::pair<Double_t, Double_t>>> YieldTable;
@@ -36,24 +37,29 @@ public:
 protected:
    void           retrieveSampleNames();
    void           retrieveSampleNames(TString region);
+   void           retrieveRooProductNames(TString region);
    RooFormulaVar *retrieveYieldRFV(std::vector<TString> regions, std::vector<TString> components);
    RooFormulaVar *retrieveYieldRFV(TString region, std::vector<TString> components);
+   RooFitResult * fitPdfInRegions(std::vector<TString> regions, Bool_t saveResult = kFALSE, Bool_t doMinos = kTRUE);
 
 private:
-   TString                                 m_inputFile;
-   TString                                 m_workspaceName;
-   TString                                 m_modelConfigName;
-   TString                                 m_dataName;
-   TString                                 m_rangeName;
-   std::vector<TString>                    m_evalRegions;
-   std::vector<TString>                    m_fitRegions;
-   std::map<TString, std::vector<TString>> m_samples;
+   TString              m_inputFile;
+   TString              m_workspaceName;
+   TString              m_modelConfigName;
+   TString              m_dataName;
+   TString              m_rangeName;
+   std::vector<TString> m_evalRegions;
+   std::vector<TString> m_fitRegions;
+   std::map<TString, std::vector<TString>>
+                                           m_products; ///< name of the RooProduct representing each sample in each region
+   std::map<TString, std::vector<TString>> m_samples; ///< name of the regions, inferred from \c m_products
 
    TFile *                m_file;
    RooWorkspace *         m_w;
    RooStats::ModelConfig *m_mc;
    RooSimultaneous *      m_simPdf;
-   const RooCategory *    m_cat;
+   RooCategory *          m_cat;
+   TString                m_prefitSnap;
 
    std::map<TString, RooFormulaVar *> m_yieldRFV;
 };
