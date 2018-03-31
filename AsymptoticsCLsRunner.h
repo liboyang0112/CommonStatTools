@@ -105,12 +105,12 @@ public:
 
    void reset();
 
-   // standalone-user-friendly function
+   /// standalone-user-friendly function
    void run(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName,
             TString paramName, float paramValue, TString workspaceTag, TString outputFolder, Double_t CL = 0.95,
             const char *asimovDataName = 0);
 
-   // main function
+   /// main function
    TTree *computeLimit(RooWorkspace *workspace, const char *modelConfigName, const char *dataName, TString paramName,
                        float paramValue, Double_t CL, const char *asimovDataName);
 
