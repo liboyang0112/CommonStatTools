@@ -14,6 +14,7 @@
 #include <RooArgList.h>
 #include <TMatrixDSym.h>
 #include <TVectorD.h>
+#include <RooGaussian.h>
 #include <iostream>
 
 #include "RooExpandedFitResult.h"
@@ -174,6 +175,10 @@ EXOSTATS::YieldTable EXOSTATS::HistFactoryInspector::getYields(Bool_t asymErrors
          RFV_map[reg][sample]     = retrieveYieldRFV(reg, vec);
          auto yieldRFV            = RFV_map[reg][sample];
 
+         // retrieve floating parameters and set their errors to initial sensible values
+         auto floatParList = getFloatParList(*m_simPdf, *m_mc->GetObservables());
+         resetError(floatParList);
+
          RooExpandedFitResult emptyFitResult(getFloatParList(*m_simPdf, *m_mc->GetObservables()));
          const Double_t       rfv_val = yieldRFV->getVal();
          myCout << rfv_val << " +/- ";
@@ -223,7 +228,10 @@ EXOSTATS::YieldTable EXOSTATS::HistFactoryInspector::getYields(Bool_t asymErrors
    return EXOSTATS::YieldTable();
 }
 
-EXOSTATS::ImpactTable EXOSTATS::HistFactoryInspector::getImpacts(std::vector<TString> samples) {}
+EXOSTATS::ImpactTable EXOSTATS::HistFactoryInspector::getImpacts(std::vector<TString> samples)
+{
+   return ImpactTable();
+}
 
 EXOSTATS::ImpactTable EXOSTATS::HistFactoryInspector::getImpacts(TString samples)
 {
@@ -275,7 +283,7 @@ void EXOSTATS::HistFactoryInspector::retrieveRooProductNames(TString region)
 {
    m_products[region].clear();
 
-   const TString  rrsPdfName = TString::Format("%s_model", region.Data()); // hardcoded in HistFactory
+   const TString rrsPdfName = TString::Format("%s_model", region.Data()); // hardcoded in HistFactory
    RooRealSumPdf *rrsPdf = dynamic_cast<RooRealSumPdf *>(m_simPdf->getPdf(region)->getComponents()->find(rrsPdfName));
 
    std::vector<TString> result;
@@ -467,7 +475,7 @@ RooFitResult *EXOSTATS::HistFactoryInspector::fitPdfInRegions(std::vector<TStrin
 Double_t EXOSTATS::HistFactoryInspector::getPropagatedError(RooAbsReal *var, const RooFitResult &fitResult,
                                                             const Bool_t doAsym)
 {
-   if (m_debugLevel >= 1) std::cout << " GPP for variable = " << var->GetName() << std::endl;
+   if (m_debugLevel <= 1) std::cout << " GPP for variable = " << var->GetName() << std::endl;
    // Clone self for internal use
    RooAbsReal *cloneFunc   = var; //(RooAbsReal*) var->cloneTree();
    RooArgSet * errorParams = cloneFunc->getObservables(fitResult.floatParsFinal());
@@ -509,7 +517,7 @@ Double_t EXOSTATS::HistFactoryInspector::getPropagatedError(RooAbsReal *var, con
          errVal = errAvg;
       }
 
-      if (m_debugLevel >= 1)
+      if (m_debugLevel <= 1)
          std::cout << " GPP:  par = " << rrv.GetName() << " cenVal = " << cenVal << " errSym = " << errHes
                    << " errAvgAsym = " << errAvg << std::endl;
 
@@ -531,8 +539,8 @@ Double_t EXOSTATS::HistFactoryInspector::getPropagatedError(RooAbsReal *var, con
       errVec[i] = sqrt(V(newII, newII));
       for (int j = i; j < paramList.getSize(); j++) {
          int newJ = fpf_idx[j];
-         C(i, j)  = V(newII, newJ) / sqrt(V(newII, newII) * V(newJ, newJ));
-         C(j, i)  = C(i, j);
+         C(i, j) = V(newII, newJ) / sqrt(V(newII, newII) * V(newJ, newJ));
+         C(j, i) = C(i, j);
       }
    }
 
@@ -577,4 +585,155 @@ RooArgList EXOSTATS::HistFactoryInspector::getFloatParList(const RooAbsPdf &pdf,
    delete iter;
 
    return floatParList;
+}
+
+/////////////////////////////////////////////////////////////////
+/// Find the input parameter (systematic) with the given name and shift that parameter (systematic) by 1-sigma if given;
+/// otherwise set error to small number
+///
+/// Adapted from HistFitter
+void EXOSTATS::HistFactoryInspector::resetError(const RooArgList &parList, const RooArgList &vetoList)
+
+{
+   /// For the given workspace,
+   /// find the input systematic with
+   /// the given name and shift that
+   /// systematic by 1-sigma
+
+   if (m_debugLevel <= 1)
+      std::cout << " starting with workspace: " << m_w->GetName() << "   parList.getSize(): " << parList.getSize()
+                << "  vetoList.size() = " << vetoList.getSize() << std::endl;
+
+   TIterator *iter = parList.createIterator();
+   RooAbsArg *arg;
+   while ((arg = (RooAbsArg *)iter->Next())) {
+
+      std::string UncertaintyName;
+      if (arg->InheritsFrom("RooRealVar") && !arg->isConstant()) {
+         UncertaintyName = arg->GetName();
+      } else {
+         continue;
+      }
+
+      if (vetoList.FindObject(UncertaintyName.c_str()) != 0) {
+         continue;
+      }
+
+      RooRealVar *var = m_w->var(UncertaintyName.c_str());
+      if (!var) {
+         if (m_debugLevel <= 2)
+            std::cout << "Could not find variable: " << UncertaintyName << " in workspace: " << m_w->GetName() << ": "
+                      << m_w << std::endl;
+      }
+
+      // Initialize
+      double val_hi  = FLT_MAX;
+      double val_low = FLT_MIN;
+      double sigma   = 0.;
+      bool   resetRange(false);
+
+      if (UncertaintyName == "") {
+         if (m_debugLevel <= 2) std::cout << "No Uncertainty Name provided" << std::endl;
+         throw - 1;
+      }
+      // If it is a standard (gaussian) uncertainty
+      else if (string(UncertaintyName).find("alpha") != string::npos) {
+         // Assume the values are +1, -1
+         val_hi     = 1.0;
+         val_low    = -1.0;
+         sigma      = 1.0;
+         resetRange = true;
+      }
+      // If it is Lumi:
+      else if (UncertaintyName == "Lumi") {
+         // Get the Lumi's constraint term:
+         RooGaussian *lumiConstr = (RooGaussian *)m_w->pdf("lumiConstraint");
+         if (!lumiConstr) {
+            if (m_debugLevel <= 2)
+               std::cout << "Could not find m_w->pdf('lumiConstraint') "
+                         << " in workspace: " << m_w->GetName() << ": " << m_w
+                         << " when trying to reset error for parameter: Lumi" << std::endl;
+            continue;
+         }
+         // Get the uncertainty on the Lumi:
+         RooRealVar *lumiSigma = (RooRealVar *)lumiConstr->findServer(0);
+         sigma                 = lumiSigma->getVal();
+
+         RooRealVar *nominalLumi = m_w->var("nominalLumi");
+         double      val_nom     = nominalLumi->getVal();
+
+         val_hi     = val_nom + sigma;
+         val_low    = val_nom - sigma;
+         resetRange = true;
+      }
+      // If it is a stat uncertainty (gamma)
+      else if (string(UncertaintyName).find("gamma") != string::npos) {
+
+         // Get the constraint and check its type:
+         RooAbsReal *constraint     = (RooAbsReal *)m_w->obj((UncertaintyName + "_constraint").c_str());
+         std::string ConstraintType = "";
+         if (constraint != 0) {
+            ConstraintType = constraint->IsA()->GetName();
+         }
+
+         if (ConstraintType == "") {
+            if (m_debugLevel <= 1)
+               std::cout << "Assuming parameter :" << UncertaintyName << ": is a ShapeFactor and so unconstrained"
+                         << std::endl;
+            continue;
+         } else if (ConstraintType == "RooGaussian") {
+            RooAbsReal *sigmaVar = (RooAbsReal *)m_w->obj((UncertaintyName + "_sigma").c_str());
+            sigma                = sigmaVar->getVal();
+
+            // Symmetrize shifts
+            val_hi     = 1 + sigma;
+            val_low    = 1 - sigma;
+            resetRange = true;
+         } else if (ConstraintType == "RooPoisson") {
+            RooAbsReal *nom_gamma     = (RooAbsReal *)m_w->obj(("nom_" + UncertaintyName).c_str());
+            double      nom_gamma_val = nom_gamma->getVal();
+
+            sigma      = 1 / TMath::Sqrt(nom_gamma_val);
+            val_hi     = 1 + sigma;
+            val_low    = 1 - sigma;
+            resetRange = true;
+         } else {
+            if (m_debugLevel <= 2)
+               std::cout << "Strange constraint type for Stat Uncertainties: " << ConstraintType << std::endl;
+            throw - 1;
+         }
+
+      } // End Stat Error
+      else {
+         // Some unknown uncertainty
+         if (m_debugLevel <= 1) {
+            std::cout << "Couldn't identify type of uncertainty for parameter: " << UncertaintyName
+                      << ". Assuming a normalization factor." << std::endl;
+            std::cout << "Setting uncertainty to 0.0001 before the fit for parameter: " << UncertaintyName << std::endl;
+         }
+         sigma      = 0.0001;
+         val_low    = var->getVal() - sigma;
+         val_hi     = var->getVal() + sigma;
+         resetRange = false;
+      }
+
+      var->setError(abs(sigma));
+      if (resetRange) {
+         double minrange = var->getMin();
+         double maxrange = var->getMax();
+         double newmin   = var->getVal() - 6. * sigma;
+         double newmax   = var->getVal() + 6. * sigma;
+         if (minrange < newmin) var->setMin(newmin);
+         if (newmax < maxrange) var->setMax(newmax);
+      }
+
+      if (m_debugLevel <= 1)
+         std::cout << "Uncertainties on parameter: " << UncertaintyName << " low: " << val_low << " high: " << val_hi
+                   << " sigma: " << sigma << " min range: " << var->getMin() << " max range: " << var->getMax()
+                   << std::endl;
+
+      // Done
+   } // end loop
+
+   delete iter;
 }

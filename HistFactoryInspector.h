@@ -2,7 +2,10 @@
 #define __HistFactoryInspector_h__
 
 /// \class HistFactoryInspector
+///
 /// A class to inspect HistFactory workspaces, retrieving yields and nuisance parameter impacts
+///
+/// \author Valerio Ippolito
 
 #include <vector>
 #include <map>
@@ -68,6 +71,7 @@ protected:
    RooFitResult * fitPdfInRegions(std::vector<TString> regions, Bool_t saveResult = kFALSE, Bool_t doMinos = kTRUE);
    Double_t       getPropagatedError(RooAbsReal *var, const RooFitResult &fitResult, const Bool_t doAsym);
    RooArgList     getFloatParList(const RooAbsPdf &pdf, const RooArgSet &obsSet);
+   void resetError(const RooArgList &parList, const RooArgList &vetoList = RooArgList());
 
 private:
    Int_t                m_debugLevel;
