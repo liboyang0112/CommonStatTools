@@ -6,7 +6,7 @@
 
 #include <vector>
 #include <map>
-#include <TString.h>
+#include <RooArgList.h>
 
 class TFile;
 class RooFormulaVar;
@@ -24,15 +24,18 @@ typedef std::map<TString, std::map<TString, std::pair<Double_t, Double_t>>> Impa
 
 class HistFactoryInspector {
 public:
+   HistFactoryInspector();
+   void setDebugLevel(Int_t level);
    void setInput(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName,
                  TString rangeName);
    void setEvalRegions(std::vector<TString> regions);
    void setEvalRegions(TString regions);
    void setFitRegions(std::vector<TString> regions);
    void setFitRegions(TString regions);
-   YieldTable  getYields();
+   YieldTable  getYields(Bool_t asymErrors = kTRUE);
    ImpactTable getImpacts(std::vector<TString> samples);
    ImpactTable getImpacts(TString samples);
+   RooArgList  getFloatParList(const RooAbsPdf &pdf, const RooArgSet &obsSet);
 
 protected:
    void           retrieveSampleNames();
@@ -41,8 +44,10 @@ protected:
    RooFormulaVar *retrieveYieldRFV(std::vector<TString> regions, std::vector<TString> components);
    RooFormulaVar *retrieveYieldRFV(TString region, std::vector<TString> components);
    RooFitResult * fitPdfInRegions(std::vector<TString> regions, Bool_t saveResult = kFALSE, Bool_t doMinos = kTRUE);
+   Double_t       getPropagatedError(RooAbsReal *var, const RooFitResult &fitResult, const Bool_t doAsym);
 
 private:
+   Int_t                m_debugLevel;
    TString              m_inputFile;
    TString              m_workspaceName;
    TString              m_modelConfigName;

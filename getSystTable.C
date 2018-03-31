@@ -1,5 +1,6 @@
 #include "HistFactoryInspector.h"
 
+R__LOAD_LIBRARY(RooExpandedFitResult.C+)
 R__LOAD_LIBRARY(HistFactoryInspector.C+)
 
 void getSystTable(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName, TString workspaceTag, TString outputFolder, TString samples, TString evalRegions, TString fitRegions, Bool_t doYields = kTRUE, Bool_t doImpacts = kTRUE)

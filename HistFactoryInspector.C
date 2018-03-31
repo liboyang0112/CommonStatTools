@@ -11,8 +11,12 @@
 #include <TPRegexp.h>
 #include <RooFitResult.h>
 #include <RooDataSet.h>
+#include <RooArgList.h>
+#include <TMatrixDSym.h>
+#include <TVectorD.h>
 #include <iostream>
 
+#include "RooExpandedFitResult.h"
 #include "HistFactoryInspector.h"
 
 ////////////////////////////////////
@@ -56,6 +60,27 @@ TString join(TString separator, std::vector<TString> vec)
    return result;
 }
 
+EXOSTATS::HistFactoryInspector::HistFactoryInspector()
+{
+   m_debugLevel      = 2;
+   m_inputFile       = "";
+   m_workspaceName   = "";
+   m_modelConfigName = "";
+   m_dataName        = "";
+   m_rangeName       = "";
+   m_file            = nullptr;
+   m_w               = nullptr;
+   m_mc              = nullptr;
+   m_simPdf          = nullptr;
+   m_cat             = nullptr;
+   m_prefitSnap      = "DUMMY";
+}
+
+void EXOSTATS::HistFactoryInspector::setDebugLevel(Int_t level)
+{
+   m_debugLevel = level;
+}
+
 void EXOSTATS::HistFactoryInspector::setInput(const char *inputFile, const char *workspaceName,
                                               const char *modelConfigName, const char *dataName, TString rangeName)
 {
@@ -97,7 +122,7 @@ void EXOSTATS::HistFactoryInspector::setFitRegions(TString regions)
    setFitRegions(getTokens(regions, ","));
 }
 
-EXOSTATS::YieldTable EXOSTATS::HistFactoryInspector::getYields()
+EXOSTATS::YieldTable EXOSTATS::HistFactoryInspector::getYields(Bool_t asymErrors)
 {
    // prefit
    m_w->loadSnapshot(m_prefitSnap); // crucial!
@@ -110,7 +135,10 @@ EXOSTATS::YieldTable EXOSTATS::HistFactoryInspector::getYields()
          std::vector<TString> vec      = {sample}; // we want yields for each single sample :)
          auto                 yieldRFV = retrieveYieldRFV(reg, vec);
 
-         std::cout << yieldRFV->getVal() << std::endl;
+         RooExpandedFitResult emptyFitResult(getFloatParList(*m_simPdf, *m_mc->GetObservables()));
+         std::cout << yieldRFV->getVal() << " +/- ";
+         // std::cout << yieldRFV->getPropagatedError(emptyFitResult) << std::endl;
+         std::cout << getPropagatedError(yieldRFV, emptyFitResult, asymErrors) << std::endl;
       }
    }
 
@@ -127,7 +155,8 @@ EXOSTATS::YieldTable EXOSTATS::HistFactoryInspector::getYields()
          auto                 yieldRFV = retrieveYieldRFV(reg, vec);
 
          std::cout << yieldRFV->getVal() << " +/- ";
-         std::cout << yieldRFV->getPropagatedError(*fitResult) << std::endl;
+         // std::cout << yieldRFV->getPropagatedError(*fitResult, asymErrors) << std::endl;
+         std::cout << getPropagatedError(yieldRFV, *fitResult, asymErrors) << std::endl;
       }
    }
 
@@ -371,4 +400,121 @@ RooFitResult *EXOSTATS::HistFactoryInspector::fitPdfInRegions(std::vector<TStrin
    else
       pdf->fitTo(*data, RooFit::GlobalObservables(*globObs), RooFit::Minos(doMinos));
    return fitResult;
+}
+
+/////////////////////////////
+/// Adapted from HistFitter's Util::GetPropagatedError
+Double_t EXOSTATS::HistFactoryInspector::getPropagatedError(RooAbsReal *var, const RooFitResult &fitResult,
+                                                            const Bool_t doAsym)
+{
+   if (m_debugLevel >= 1) std::cout << " GPP for variable = " << var->GetName() << std::endl;
+   // Clone self for internal use
+   RooAbsReal *cloneFunc   = var; //(RooAbsReal*) var->cloneTree();
+   RooArgSet * errorParams = cloneFunc->getObservables(fitResult.floatParsFinal());
+   RooArgSet * nset        = cloneFunc->getParameters(*errorParams);
+
+   // Make list of parameter instances of cloneFunc in order of error matrix
+   RooArgList        paramList;
+   const RooArgList &fpf = fitResult.floatParsFinal();
+   std::vector<int>  fpf_idx;
+   for (Int_t i = 0; i < fpf.getSize(); i++) {
+      RooAbsArg *par = errorParams->find(fpf[i].GetName());
+      if (par) {
+         if (!par->isConstant()) {
+            paramList.add(*par);
+            fpf_idx.push_back(i);
+         }
+      }
+   }
+
+   std::vector<Double_t> plusVar, minusVar;
+
+   TMatrixDSym V(fitResult.covarianceMatrix());
+
+   for (Int_t ivar = 0; ivar < paramList.getSize(); ivar++) {
+
+      RooRealVar &rrv = (RooRealVar &)fpf[fpf_idx[ivar]];
+
+      int newI = fpf_idx[ivar];
+
+      Double_t cenVal = rrv.getVal();
+      Double_t errHes = sqrt(V(newI, newI));
+
+      Double_t errHi  = rrv.getErrorHi();
+      Double_t errLo  = rrv.getErrorLo();
+      Double_t errAvg = (TMath::Abs(errLo) + TMath::Abs(errHi)) / 2.0;
+
+      Double_t errVal = errHes;
+      if (doAsym) {
+         errVal = errAvg;
+      }
+
+      if (m_debugLevel >= 1)
+         std::cout << " GPP:  par = " << rrv.GetName() << " cenVal = " << cenVal << " errSym = " << errHes
+                   << " errAvgAsym = " << errAvg << std::endl;
+
+      // Make Plus variation
+      ((RooRealVar *)paramList.at(ivar))->setVal(cenVal + errVal);
+      plusVar.push_back(cloneFunc->getVal(nset));
+
+      // Make Minus variation
+      ((RooRealVar *)paramList.at(ivar))->setVal(cenVal - errVal);
+      minusVar.push_back(cloneFunc->getVal(nset));
+
+      ((RooRealVar *)paramList.at(ivar))->setVal(cenVal);
+   }
+
+   TMatrixDSym         C(paramList.getSize());
+   std::vector<double> errVec(paramList.getSize());
+   for (int i = 0; i < paramList.getSize(); i++) {
+      int newII = fpf_idx[i];
+      errVec[i] = sqrt(V(newII, newII));
+      for (int j = i; j < paramList.getSize(); j++) {
+         int newJ = fpf_idx[j];
+         C(i, j)  = V(newII, newJ) / sqrt(V(newII, newII) * V(newJ, newJ));
+         C(j, i)  = C(i, j);
+      }
+   }
+
+   // Make vector of variations
+   TVectorD F(plusVar.size());
+
+   for (unsigned int j = 0; j < plusVar.size(); j++) {
+      F[j] = (plusVar[j] - minusVar[j]) / 2;
+   }
+
+   if (m_debugLevel < 1) {
+      F.Print();
+      C.Print();
+   }
+
+   // Calculate error in linear approximation 1 variations and correlation coefficient
+   Double_t sum = F * (C * F);
+
+   if (m_debugLevel >= 1) std::cout << " GPP : sum = " << sqrt(sum) << std::endl;
+
+   return sqrt(sum);
+}
+
+//////////////////////////////
+// adapted from HistFitter
+RooArgList EXOSTATS::HistFactoryInspector::getFloatParList(const RooAbsPdf &pdf, const RooArgSet &obsSet)
+{
+   RooArgList floatParList;
+
+   const RooArgSet *pars = pdf.getParameters(obsSet);
+   if (pars == 0) {
+      return floatParList;
+   }
+
+   TIterator *iter = pars->createIterator();
+   RooAbsArg *arg;
+   while ((arg = (RooAbsArg *)iter->Next())) {
+      if (arg->InheritsFrom("RooRealVar") && !arg->isConstant()) {
+         floatParList.add(*arg);
+      }
+   }
+   delete iter;
+
+   return floatParList;
 }
