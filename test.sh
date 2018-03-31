@@ -1,6 +1,6 @@
 #!/bin/bash
 
-WORKSPACEFILE=/tmp/exo/results/example_DS_04p000_combined_DS_04p000_model.root
+WORKSPACEFILE=example_DS_04p000_combined_DS_04p000_model.root
 WORKSPACENAME=combined
 MODELCONFIGNAME=ModelConfig
 DATASETNAME=obsData
@@ -21,4 +21,4 @@ root -b -q getGlobalP0.C\(3.4,2\)
 python compareHistos.py -o $WORKSPACEFILE -n $WORKSPACEFILE
 python obtainHistosFromWS.py -i $WORKSPACEFILE -o validation_histos.root
 root -b -q getCorrMatrix.C\(\"$WORKSPACEFILE\",\"$WORKSPACENAME\",\"$MODELCONFIGNAME\",\"$DATASETNAME\",\"$WORKSPACETAG\",\"$OUTPUTFOLDER\",\"$FIGUREFORMAT\"\)
-root -b -q getSystTable.C+\(\"$WORKSPACEFILE\",\"$WORKSPACENAME\",\"$MODELCONFIGNAME\",\"$DATASETNAME\",\"$WORKSPACETAG\",\"$OUTPUTFOLDER\",\"$SAMPLES\",\"$EVALUATIONREGIONS\",\"$FITREGIONS\"\)
+root -b -q getHFtables.C\(\"$WORKSPACEFILE\",\"$WORKSPACENAME\",\"$MODELCONFIGNAME\",\"$DATASETNAME\",\"$WORKSPACETAG\",\"$OUTPUTFOLDER\",\"$EVALUATIONREGIONS\",\"$FITREGIONS\",kTRUE,kTRUE,\"$SAMPLES\"\)
