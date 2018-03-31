@@ -90,6 +90,7 @@ EXOSTATS::HistFactoryInspector::HistFactoryInspector()
    m_simPdf          = nullptr;
    m_cat             = nullptr;
    m_prefitSnap      = "DUMMY";
+   m_postfitSnap     = "DUMMY";
 }
 
 /// Debug level: 0 = verbose, 1 = debug, 2 = warning, 3 = error, 4 = fatal, 5 = silent
@@ -112,12 +113,13 @@ void EXOSTATS::HistFactoryInspector::setInput(const char *inputFile, const char 
    m_dataName        = dataName;
    m_rangeName       = rangeName;
 
-   m_file       = new TFile(m_inputFile);
-   m_w          = dynamic_cast<RooWorkspace *>(m_file->Get(m_workspaceName));
-   m_mc         = dynamic_cast<RooStats::ModelConfig *>(m_w->obj(m_modelConfigName));
-   m_simPdf     = dynamic_cast<RooSimultaneous *>(m_mc->GetPdf());
-   m_cat        = m_w->cat(m_simPdf->indexCat().GetName()); // we need non-const access
-   m_prefitSnap = "myPrefitSnap";
+   m_file        = new TFile(m_inputFile);
+   m_w           = dynamic_cast<RooWorkspace *>(m_file->Get(m_workspaceName));
+   m_mc          = dynamic_cast<RooStats::ModelConfig *>(m_w->obj(m_modelConfigName));
+   m_simPdf      = dynamic_cast<RooSimultaneous *>(m_mc->GetPdf());
+   m_cat         = m_w->cat(m_simPdf->indexCat().GetName()); // we need non-const access
+   m_prefitSnap  = "myPrefitSnap";
+   m_postfitSnap = "myPostfitSnap";
 
    // make snapshot of things before we do anything
    m_w->saveSnapshot(m_prefitSnap, *m_mc->GetPdf()->getParameters(*m_w->data(m_dataName)));
@@ -254,24 +256,24 @@ EXOSTATS::ImpactTable EXOSTATS::HistFactoryInspector::getImpacts(std::vector<TSt
 
    ImpactTable result;
    result.first = ImpactTableElement();
+   std::map<TString, TString> summedSamples;
    for (auto kv : m_samples) {
       auto reg = kv.first;
       myCout << "region: " << reg << std::endl;
 
       // we will sum up all samples, among those requested, which are present in this regions
       std::vector<TString> vec;
-      TString              summedSamples = "";
       for (auto sample : kv.second) {
          if (std::find(samples.begin(), samples.end(), sample) != samples.end()) {
             vec.push_back(sample);
 
-            if (summedSamples == "")
-               summedSamples += sample;
+            if (summedSamples[reg] == "")
+               summedSamples[reg] += sample;
             else
-               summedSamples += " + " + sample;
+               summedSamples[reg] += " + " + sample;
          }
       }
-      myCout << "   - " << summedSamples << ": yield = ";
+      myCout << "   - " << summedSamples[reg] << ": yield = ";
       RFV_map[reg]  = retrieveYieldRFV(reg, vec);
       auto yieldRFV = RFV_map[reg];
 
@@ -279,7 +281,7 @@ EXOSTATS::ImpactTable EXOSTATS::HistFactoryInspector::getImpacts(std::vector<TSt
       myCout << rfv_val << std::endl; // we don't retrieve the error
 
       for (auto np : getFreeParameters()) {
-         auto var                     = getYieldUpDown(np, yieldRFV, kFALSE);
+         auto var                     = getYieldUpDown(np, yieldRFV, kFALSE, kFALSE, kFALSE);
          result.first[reg][np].first  = var.first / rfv_val - 1;
          result.first[reg][np].second = var.second / rfv_val - 1;
          myCout << "        - " << np << ": (up, down) = (" << prd(result.first[reg][np].first * 100, 2) << "%, "
@@ -287,43 +289,47 @@ EXOSTATS::ImpactTable EXOSTATS::HistFactoryInspector::getImpacts(std::vector<TSt
       }
    }
 
-   /*
    // fit
    m_w->loadSnapshot(m_prefitSnap);
    RooFitResult *fitResult = fitPdfInRegions(m_fitRegions, kTRUE, kTRUE);
+   if (m_debugLevel <= 1) fitResult->Print();
+   m_w->saveSnapshot(m_postfitSnap,
+                     *m_mc->GetPdf()->getParameters(*m_w->data(
+                        m_dataName))); // we save it and reload it before evaluating all ingredients of post-fit impacts
 
    // postfit
    myCout << "\n\n\nPOST-FIT IMPACTS\n*****************\n\n";
-   result.second = YieldTableElement();
+   result.second = ImpactTableElement();
    for (auto kv : m_samples) {
+      m_w->loadSnapshot(m_postfitSnap);
       auto reg = kv.first;
       myCout << "region: " << reg << std::endl;
-      for (auto sample : kv.second) {
-         myCout << "   - " << sample << ": ";
-         auto yieldRFV = RFV_map[reg][sample]; // we re-use the one created for the pre-fit
+      myCout << "   - " << summedSamples[reg] << ": yield = ";
+      auto yieldRFV = RFV_map[reg];
 
-         const Double_t rfv_val = yieldRFV->getVal();
-         myCout << rfv_val << " +/- ";
-         // const Double_t rfv_err = yieldRFV->getPropagatedError(*fitResult);
-         const Double_t rfv_err = getPropagatedError(yieldRFV, *fitResult, asymErrors);
-         myCout << rfv_err << std::endl;
+      const Double_t rfv_val = yieldRFV->getVal();
+      myCout << rfv_val << " +/- ";
+      const Double_t rfv_err = getPropagatedError(yieldRFV, *fitResult, kTRUE);
+      myCout << rfv_err << std::endl;
 
-         result.first[reg][sample].first  = rfv_val;
-         result.first[reg][sample].second = rfv_err;
+      for (auto np : getFreeParameters()) {
+         m_w->loadSnapshot(m_postfitSnap);
+         auto var                     = getYieldUpDown(np, yieldRFV, kFALSE, kTRUE, kFALSE);
+         result.first[reg][np].first  = var.first / rfv_val - 1;
+         result.first[reg][np].second = var.second / rfv_val - 1;
+         myCout << "        - " << np << ": (up, down) = (" << prd(result.first[reg][np].first * 100, 2) << "%, "
+                << prd(result.first[reg][np].second * 100, 2) << "%)" << std::endl;
       }
    }
 
    // garbage collection
    for (auto kv : RFV_map) {
-      for (auto kv2 : kv.second) {
-         delete kv2.second;
-      }
+      delete kv.second;
    }
-   */
 
    std::cout << myCout.str() << std::endl;
 
-   return EXOSTATS::YieldTable();
+   return result;
 }
 
 EXOSTATS::ImpactTable EXOSTATS::HistFactoryInspector::getImpacts(TString samples)
@@ -570,28 +576,48 @@ RooFitResult *EXOSTATS::HistFactoryInspector::fitPdfInRegions(std::vector<TStrin
 /// \param[in] impact pointer to the RooFormulaVar used to calculate the impact
 /// \param[in] useErrorVal if \c kTRUE, will use fitted errors as plus and minus NP variations; otherwise, will use +/-
 /// 1 \param[out] result pair of impact of up and down variation on the provided RooFormulaVar
+/// \param[in] doFit if \c kTRUE, will fit the PDF after fixing the NP to up/down one sigma
+/// \param[in] doMinos if \c kTRUE, will use MINOS for the fit, if activated (very slow!)
 ///
 /// Uses a given RooFormulaVar (typically the output of getComponent) to evaluate the impact of
 /// varying a nuisance parameter up or down by one sigma. The variation is done either manually
 /// by \c avg +/- 1 (\c useErrorVar set to \c false) or by \c avg +/- 1 sigma (\c useErrorVar set to \c true)
 ///
-/// Note that, for OverallSys uncertainties, the output of this function must be ~identical to what specified in the
-/// HistFactory's XMLs.
+/// Note that, for OverallSys uncertainties and fit deactivated, the output of this function
+/// must be ~identical to what specified in the HistFactory's XMLs.
 std::pair<Double_t, Double_t> EXOSTATS::HistFactoryInspector::getYieldUpDown(TString param, RooFormulaVar *yield,
-                                                                             Bool_t useErrorVar)
+                                                                             Bool_t useErrorVar, Bool_t doFit,
+                                                                             Bool_t doMinos)
 {
    std::pair<Double_t, Double_t> result;
-   auto                          var = m_w->var(param);
 
+   auto         var         = m_w->var(param);
+   const Bool_t wasConstant = var->isConstant();
+
+   // NOTE: assumes that the nominal value of the NP is meaningful already, i.e.
+   // that the standard fit with all NPs was just done, if appropriate
+   // that's why nom/up/down values of the NP are calculated now...
    const Double_t par_nom  = var->getVal();
    const Double_t par_up   = par_nom + ((useErrorVar) ? var->getErrorHi() : 1);
-   const Double_t par_down = par_nom + ((useErrorVar) ? var->getErrorLo() : -1);
+   const Double_t par_down = par_nom + ((useErrorVar) ? var->getErrorHi() : 1);
 
+   // fit only if requested
    var->setVal(par_up);
+   if (doFit) {
+      var->setConstant(kTRUE);
+      fitPdfInRegions(m_fitRegions, kFALSE, doMinos);
+   }
    result.first = yield->getVal();
 
    var->setVal(par_down);
+   if (doFit) {
+      var->setConstant(kTRUE);
+      fitPdfInRegions(m_fitRegions, kFALSE, doMinos);
+   }
    result.second = yield->getVal();
+
+   // restore constantness
+   var->setConstant(wasConstant);
 
    return result;
 }
