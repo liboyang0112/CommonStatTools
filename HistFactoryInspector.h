@@ -19,23 +19,45 @@ class RooCategory;
 class RooFitResult;
 
 namespace EXOSTATS {
-typedef std::map<TString, std::map<TString, std::pair<Double_t, Double_t>>> YieldTable;
-typedef std::map<TString, std::map<TString, std::pair<Double_t, Double_t>>> ImpactTable;
+typedef std::map<TString, std::map<TString, std::pair<Double_t, Double_t>>> YieldTableElement;
+typedef std::pair<YieldTableElement, YieldTableElement>                     YieldTable;
+typedef std::map<TString, std::map<TString, std::pair<Double_t, Double_t>>> ImpactTableElement;
+typedef std::pair<ImpactTableElement, ImpactTableElement>                   ImpactTable;
 
 class HistFactoryInspector {
 public:
+   /// Constructor
    HistFactoryInspector();
+
    void setDebugLevel(Int_t level);
+
+   /// Set the input
    void setInput(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName,
                  TString rangeName);
+
+   /// Set the regions where yields/impacts are evaluated
    void setEvalRegions(std::vector<TString> regions);
+
+   /// Set the regions where yields/impacts are evaluated
    void setEvalRegions(TString regions);
+
+   /// Set the regions where fit is performed
    void setFitRegions(std::vector<TString> regions);
+
+   /// Set the regions where fit is performed
    void setFitRegions(TString regions);
-   YieldTable  getYields(Bool_t asymErrors = kTRUE);
+
+   /// Retrieves event yields before and after fit, for selected evalRegions, when the fit is performed in the selected
+   /// fitRegions
+   YieldTable getYields(Bool_t asymErrors = kTRUE);
+
+   /// Calculates the impact of each nuisance parameter on the sum of the selected samples, when the fit is performed in
+   /// the selected fitRegions
    ImpactTable getImpacts(std::vector<TString> samples);
+
+   /// Calculates the impact of each nuisance parameter on the sum of the selected samples, when the fit is performed in
+   /// the selected fitRegions
    ImpactTable getImpacts(TString samples);
-   RooArgList  getFloatParList(const RooAbsPdf &pdf, const RooArgSet &obsSet);
 
 protected:
    void           retrieveSampleNames();
@@ -45,6 +67,7 @@ protected:
    RooFormulaVar *retrieveYieldRFV(TString region, std::vector<TString> components);
    RooFitResult * fitPdfInRegions(std::vector<TString> regions, Bool_t saveResult = kFALSE, Bool_t doMinos = kTRUE);
    Double_t       getPropagatedError(RooAbsReal *var, const RooFitResult &fitResult, const Bool_t doAsym);
+   RooArgList     getFloatParList(const RooAbsPdf &pdf, const RooArgSet &obsSet);
 
 private:
    Int_t                m_debugLevel;

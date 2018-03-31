@@ -76,11 +76,17 @@ EXOSTATS::HistFactoryInspector::HistFactoryInspector()
    m_prefitSnap      = "DUMMY";
 }
 
+/// Debug level: 0 = verbose, 1 = debug, 2 = warning, 3 = error, 4 = fatal, 5 = silent
 void EXOSTATS::HistFactoryInspector::setDebugLevel(Int_t level)
 {
    m_debugLevel = level;
 }
 
+/// \param[in] inputFile name of the input file containing the workspace
+/// \param[in] workspaceName name of the workspace
+/// \param[in] modelConfigName name of the ModelConfig object to be retrieved from the workspace
+/// \param[in] dataName name of the dataset to be fitted
+/// \param[in] rangeName name of the observable range to restrict calculation to (must be defined in the workspace)
 void EXOSTATS::HistFactoryInspector::setInput(const char *inputFile, const char *workspaceName,
                                               const char *modelConfigName, const char *dataName, TString rangeName)
 {
@@ -101,64 +107,118 @@ void EXOSTATS::HistFactoryInspector::setInput(const char *inputFile, const char 
    m_w->saveSnapshot(m_prefitSnap, *m_mc->GetPdf()->getParameters(*m_w->data(m_dataName)));
 }
 
+/// \param[in] regions vector of names of regions (channels) to compute yields/impacts in
 void EXOSTATS::HistFactoryInspector::setEvalRegions(std::vector<TString> regions)
 {
    m_evalRegions = regions;
    retrieveSampleNames();
 }
 
+/// \param[in] regions comma-separated list of names of regions (channels) to compute yields/impacts in
 void EXOSTATS::HistFactoryInspector::setEvalRegions(TString regions)
 {
    setEvalRegions(getTokens(regions, ","));
 }
 
+/// \param[in] regions vector of names of regions (channels) where the fit must be performed
 void EXOSTATS::HistFactoryInspector::setFitRegions(std::vector<TString> regions)
 {
    m_fitRegions = regions;
 }
 
+/// \param[in] regions comma-separated list of names of regions (channels) where the fit must be performed
 void EXOSTATS::HistFactoryInspector::setFitRegions(TString regions)
 {
    setFitRegions(getTokens(regions, ","));
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// \param[in] asymErrors activate error calculation using asymmetric errors
+/// \param[out] pair pre- and post-fit yield tables
+///
+/// The yield tables for all samples in activated evalRegions before and after fit are also returned. For example:
+/// \code
+/// auto result = hf.getYields();
+/// auto prefitTable = result.first;
+/// auto postfitTable = result.second;
+/// for (auto kv: prefitTable) {
+///   auto region = kv.first;
+///   for (auto kv2: kv.second) {
+///     auto sample = kv2.first;
+///     auto yield = kv2.second.first;
+///     auto error = kv2.second.secondo;
+///     cout << "region " << region << " sample " << sample << ": yield " << yield << " +/- " << error << endl;
+///     // in other workds, prefitTable["SR"]["Zmumu"].first is the Zmumu yield before fit, and .second is the error on
+///     this number
+///   }
+/// }
+/// \endcode
+/// Tip: use these returned objects for fancy output formatting / usage of function output in ancillary code.
 EXOSTATS::YieldTable EXOSTATS::HistFactoryInspector::getYields(Bool_t asymErrors)
 {
    // prefit
+   std::stringstream myCout; // let's print everything at the end of the job, to avoid being flooded by RooFit printouts
+   myCout << "\n\n\nPRE-FIT\n*****************\n\n";
    m_w->loadSnapshot(m_prefitSnap); // crucial!
 
+   std::map<TString, std::map<TString, RooFormulaVar *>> RFV_map;
+
+   YieldTable result;
+   result.first = YieldTableElement();
    for (auto kv : m_samples) {
       auto reg = kv.first;
-      std::cout << "region: " << reg << std::endl;
+      myCout << "region: " << reg << std::endl;
       for (auto sample : kv.second) {
-         std::cout << "   - " << sample << ": ";
-         std::vector<TString> vec      = {sample}; // we want yields for each single sample :)
-         auto                 yieldRFV = retrieveYieldRFV(reg, vec);
+         myCout << "   - " << sample << ": ";
+         std::vector<TString> vec = {sample}; // we want yields for each single sample :)
+         RFV_map[reg][sample]     = retrieveYieldRFV(reg, vec);
+         auto yieldRFV            = RFV_map[reg][sample];
 
          RooExpandedFitResult emptyFitResult(getFloatParList(*m_simPdf, *m_mc->GetObservables()));
-         std::cout << yieldRFV->getVal() << " +/- ";
-         // std::cout << yieldRFV->getPropagatedError(emptyFitResult) << std::endl;
-         std::cout << getPropagatedError(yieldRFV, emptyFitResult, asymErrors) << std::endl;
+         const Double_t       rfv_val = yieldRFV->getVal();
+         myCout << rfv_val << " +/- ";
+         // const Double_t rfv_err = yieldRFV->getPropagatedError(emptyFitResult);
+         const Double_t rfv_err = getPropagatedError(yieldRFV, emptyFitResult, asymErrors);
+         myCout << rfv_err << std::endl;
+
+         result.first[reg][sample].first  = rfv_val;
+         result.first[reg][sample].second = rfv_err;
       }
    }
 
    // fit
+   m_w->loadSnapshot(m_prefitSnap);
    RooFitResult *fitResult = fitPdfInRegions(m_fitRegions, kTRUE, kTRUE);
 
    // postfit
+   myCout << "\n\n\nPOST-FIT\n*****************\n\n";
+   result.second = YieldTableElement();
    for (auto kv : m_samples) {
       auto reg = kv.first;
-      std::cout << "region: " << reg << std::endl;
+      myCout << "region: " << reg << std::endl;
       for (auto sample : kv.second) {
-         std::cout << "   - " << sample << ": ";
-         std::vector<TString> vec      = {sample}; // we want yields for each single sample :)
-         auto                 yieldRFV = retrieveYieldRFV(reg, vec);
+         myCout << "   - " << sample << ": ";
+         auto yieldRFV = RFV_map[reg][sample]; // we re-use the one created for the pre-fit
 
-         std::cout << yieldRFV->getVal() << " +/- ";
-         // std::cout << yieldRFV->getPropagatedError(*fitResult, asymErrors) << std::endl;
-         std::cout << getPropagatedError(yieldRFV, *fitResult, asymErrors) << std::endl;
+         const Double_t rfv_val = yieldRFV->getVal();
+         myCout << rfv_val << " +/- ";
+         // const Double_t rfv_err = yieldRFV->getPropagatedError(*fitResult);
+         const Double_t rfv_err = getPropagatedError(yieldRFV, *fitResult, asymErrors);
+         myCout << rfv_err << std::endl;
+
+         result.first[reg][sample].first  = rfv_val;
+         result.first[reg][sample].second = rfv_err;
       }
    }
+
+   // garbage collection
+   for (auto kv : RFV_map) {
+      for (auto kv2 : kv.second) {
+         delete kv2.second;
+      }
+   }
+
+   std::cout << myCout.str() << std::endl;
 
    return EXOSTATS::YieldTable();
 }
