@@ -178,12 +178,15 @@ RooNLLVar *EXOSTATS::createNLL(RooStats::ModelConfig *modelConfig, RooAbsData *d
 /// \param[out] nll negative log-likelihood
 RooNLLVar *EXOSTATS::createNLL(RooAbsPdf *pdf, RooAbsData *data, const RooArgSet *nuis, Int_t numCPU)
 {
+   // VI: I commented out the number of CPU option due to this bug:
+   // https://root-forum.cern.ch/t/numcpu-crash-with-very-simple-example/28532
    RooNLLVar *nll = nullptr;
-   if (nuis != 0)
-      nll = (RooNLLVar *)pdf->createNLL(*data, RooFit::Constrain(*nuis), RooFit::NumCPU(numCPU, 3),
+   if (nuis != nullptr)
+      nll = (RooNLLVar *)pdf->createNLL(*data, RooFit::Constrain(*nuis), // RooFit::NumCPU(numCPU, 3),
                                         RooFit::Optimize(2), RooFit::Offset(true));
    else
-      nll = (RooNLLVar *)pdf->createNLL(*data, RooFit::NumCPU(numCPU, 3), RooFit::Optimize(2), RooFit::Offset(true));
+      nll =
+         (RooNLLVar *)pdf->createNLL(*data, /*RooFit::NumCPU(numCPU, 3),*/ RooFit::Optimize(2), RooFit::Offset(true));
    return nll;
 }
 
@@ -192,9 +195,9 @@ RooNLLVar *EXOSTATS::createNLL(RooAbsPdf *pdf, RooAbsData *data, const RooArgSet
 /// \param[in] doMinos if true, Minos errors are calculated
 /// \param[in] numCPU number of CPUs to use in the likelihood calculation
 /// \param[out] status Minuit status
-Int_t EXOSTATS::fit(RooStats::ModelConfig *modelConfig, RooAbsData *data, Bool_t doMinos, Int_t numCPU)
+Int_t EXOSTATS::fitModelConfig(RooStats::ModelConfig *modelConfig, RooAbsData *data, Bool_t doMinos, Int_t numCPU)
 {
-   return EXOSTATS::fit(modelConfig->GetPdf(), data, modelConfig->GetNuisanceParameters(), doMinos, numCPU);
+   return EXOSTATS::fitPdf(modelConfig->GetPdf(), data, doMinos, modelConfig->GetNuisanceParameters(), numCPU);
 }
 
 /// \param[in] pdf pointer to the p.d.f
@@ -203,7 +206,7 @@ Int_t EXOSTATS::fit(RooStats::ModelConfig *modelConfig, RooAbsData *data, Bool_t
 /// \param[in] nuis nuisance parameters (if any)
 /// \param[in] numCPU number of CPUs to use in the likelihood calculation
 /// \param[out] status Minuit status
-Int_t EXOSTATS::fit(RooAbsPdf *pdf, RooAbsData *data, const RooArgSet *nuis, Bool_t doMinos, Int_t numCPU)
+Int_t EXOSTATS::fitPdf(RooAbsPdf *pdf, RooAbsData *data, Bool_t doMinos, const RooArgSet *nuis, Int_t numCPU)
 {
    auto nll = createNLL(pdf, data, nuis, numCPU);
    return EXOSTATS::minimize(nll, 3, nullptr, "", "", 2, kFALSE, nullptr, doMinos);
@@ -215,7 +218,7 @@ Int_t EXOSTATS::fit(RooAbsPdf *pdf, RooAbsData *data, const RooArgSet *nuis, Boo
 /// \param[in] nuis nuisance parameters (if any)
 /// \param[in] numCPU number of CPUs to use in the likelihood calculation
 /// \param[out] result pointer to fit result
-RooFitResult *EXOSTATS::fit(RooAbsPdf *pdf, RooAbsData *data, Bool_t doMinos, const RooArgSet *nuis, Int_t numCPU)
+RooFitResult *EXOSTATS::fitPdfRes(RooAbsPdf *pdf, RooAbsData *data, Bool_t doMinos, const RooArgSet *nuis, Int_t numCPU)
 {
    auto          nll = createNLL(pdf, data, nuis, numCPU);
    RooFitResult *result;

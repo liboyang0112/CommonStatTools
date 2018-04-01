@@ -32,14 +32,15 @@ RooNLLVar *createNLL(RooStats::ModelConfig *modelConfig, RooAbsData *data, Int_t
 RooNLLVar *createNLL(RooAbsPdf *pdf, RooAbsData *data, const RooArgSet *nuis = nullptr, Int_t numCPU = 4);
 
 /// Fit the default p.d.f of a ModelConfig
-Int_t fit(RooStats::ModelConfig *modelConfig, RooAbsData *data, Bool_t doMinos = kFALSE, Int_t numCPU = 4);
+Int_t fitModelConfig(RooStats::ModelConfig *modelConfig, RooAbsData *data, Bool_t doMinos = kFALSE, Int_t numCPU = 4);
 
-/// Fit a generic p.d.f.
-Int_t fit(RooAbsPdf *pdf, RooAbsData *data, const RooArgSet *nuis = nullptr, Bool_t doMinos = kFALSE, Int_t numCPU = 4);
+/// Fit a generic p.d.f. and retrieve the fit status
+Int_t fitPdf(RooAbsPdf *pdf, RooAbsData *data, Bool_t doMinos = kFALSE, const RooArgSet *nuis = nullptr,
+             Int_t numCPU = 4);
 
-/// Fit a generic p.d.f.
-RooFitResult *fit(RooAbsPdf *pdf, RooAbsData *data, Bool_t doMinos = kFALSE, const RooArgSet *nuis = nullptr,
-                  Int_t numCPU = 4);
+/// Fit a generic p.d.f. and retrieve the full fit results
+RooFitResult *fitPdfRes(RooAbsPdf *pdf, RooAbsData *data, Bool_t doMinos = kFALSE, const RooArgSet *nuis = nullptr,
+                        Int_t numCPU = 4);
 
 } // namespace EXOSTATS
 
