@@ -10,17 +10,17 @@ project(ExoStats)
 list(APPEND CMAKE_PREFIX_PATH $ENV{ROOTSYS})
 
 #---Locate the ROOT package and defines a number of variables (e.g. ROOT_INCLUDE_DIRS)
-find_package(ROOT REQUIRED COMPONENTS RIO Net Tree RooFitCore RooFit RooStats)
+find_package(ROOT REQUIRED COMPONENTS RIO Net Tree RooFitCore RooFit RooStats Minuit HistFactory)
 
 #---Define useful ROOT functions and macros (e.g. ROOT_GENERATE_DICTIONARY)
 include(${ROOT_USE_FILE})
 
 #include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 #ROOT_GENERATE_DICTIONARY(G__ExoStats Event.h LINKDEF EventLinkDef.h)
-ROOT_GENERATE_DICTIONARY(G__ExoStats Minimization.h AsimovDataMaking.h AsymptoticsCLsRunner.h)
+ROOT_GENERATE_DICTIONARY(G__ExoStats Minimization.h AsimovDataMaking.h AsymptoticsCLsRunner.h HistFactoryInspector.h RooExpandedFitResult.h LINKDEF LinkDef.h)
 
 #---Create a shared library with geneated dictionary
-add_library(ExoStats SHARED Minimization.C AsimovDataMaking.C AsymptoticsCLsRunner.C)
+add_library(ExoStats SHARED Minimization.C AsimovDataMaking.C AsymptoticsCLsRunner.C HistFactoryInspector.C RooExpandedFitResult.C)
 target_link_libraries(ExoStats ${ROOT_LIBRARIES})
 
 #---Create  a main program using the library

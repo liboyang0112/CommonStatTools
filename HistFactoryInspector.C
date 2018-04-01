@@ -16,9 +16,12 @@
 #include <TVectorD.h>
 #include <RooGaussian.h>
 #include <iostream>
+#include <sstream>
 
 #include "RooExpandedFitResult.h"
 #include "HistFactoryInspector.h"
+
+using namespace std;
 
 ////////////////////////////////////
 /// A function to tokenize a string
@@ -26,9 +29,9 @@
 /// \param[in] line the string
 /// \param[in] delim its separator
 /// \param[out] vtokens a vector of tokens
-std::vector<TString> getTokens(TString line, TString delim)
+vector<TString> getTokens(TString line, TString delim)
 {
-   std::vector<TString> vtokens;
+   vector<TString> vtokens;
    TObjArray *          tokens = TString(line).Tokenize(delim); // delimiters
    if (tokens->GetEntriesFast()) {
       TIter       iString(tokens);
@@ -48,7 +51,7 @@ std::vector<TString> getTokens(TString line, TString delim)
 /// \param[in] separator the separator to add
 /// \param[in] vec a vector of strings
 /// \param[out] result a string containing all vector elements separated by a separator
-TString join(TString separator, std::vector<TString> vec)
+TString join(TString separator, vector<TString> vec)
 {
    TString result("");
    for (auto item : vec) {
@@ -126,7 +129,7 @@ void EXOSTATS::HistFactoryInspector::setInput(const char *inputFile, const char 
 }
 
 /// \param[in] regions vector of names of regions (channels) to compute yields/impacts in
-void EXOSTATS::HistFactoryInspector::setEvalRegions(std::vector<TString> regions)
+void EXOSTATS::HistFactoryInspector::setEvalRegions(vector<TString> regions)
 {
    m_evalRegions = regions;
    retrieveSampleNames();
@@ -139,7 +142,7 @@ void EXOSTATS::HistFactoryInspector::setEvalRegions(TString regions)
 }
 
 /// \param[in] regions vector of names of regions (channels) where the fit must be performed
-void EXOSTATS::HistFactoryInspector::setFitRegions(std::vector<TString> regions)
+void EXOSTATS::HistFactoryInspector::setFitRegions(vector<TString> regions)
 {
    m_fitRegions = regions;
 }
@@ -175,20 +178,20 @@ void EXOSTATS::HistFactoryInspector::setFitRegions(TString regions)
 EXOSTATS::YieldTable EXOSTATS::HistFactoryInspector::getYields(Bool_t asymErrors)
 {
    // prefit
-   std::stringstream myCout; // let's print everything at the end of the job, to avoid being flooded by RooFit printouts
+   stringstream myCout; // let's print everything at the end of the job, to avoid being flooded by RooFit printouts
    myCout << "\n\n\nPRE-FIT YIELDS\n*****************\n\n";
    m_w->loadSnapshot(m_prefitSnap); // crucial!
 
-   std::map<TString, std::map<TString, RooFormulaVar *>> RFV_map;
+   map<TString, std::map<TString, RooFormulaVar *>> RFV_map;
 
    YieldTable result;
    result.first = YieldTableElement();
    for (auto kv : m_samples) {
       auto reg = kv.first;
-      myCout << "region: " << reg << std::endl;
+      myCout << "region: " << reg << endl;
       for (auto sample : kv.second) {
          myCout << "   - " << sample << ": ";
-         std::vector<TString> vec = {sample}; // we want yields for each single sample :)
+         vector<TString> vec = {sample}; // we want yields for each single sample :)
          RFV_map[reg][sample]     = retrieveYieldRFV(reg, vec);
          auto yieldRFV            = RFV_map[reg][sample];
 
@@ -201,7 +204,7 @@ EXOSTATS::YieldTable EXOSTATS::HistFactoryInspector::getYields(Bool_t asymErrors
          myCout << rfv_val << " +/- ";
          // const Double_t rfv_err = yieldRFV->getPropagatedError(emptyFitResult);
          const Double_t rfv_err = getPropagatedError(yieldRFV, emptyFitResult, asymErrors);
-         myCout << rfv_err << std::endl;
+         myCout << rfv_err << endl;
 
          result.first[reg][sample].first  = rfv_val;
          result.first[reg][sample].second = rfv_err;
@@ -217,7 +220,7 @@ EXOSTATS::YieldTable EXOSTATS::HistFactoryInspector::getYields(Bool_t asymErrors
    result.second = YieldTableElement();
    for (auto kv : m_samples) {
       auto reg = kv.first;
-      myCout << "region: " << reg << std::endl;
+      myCout << "region: " << reg << endl;
       for (auto sample : kv.second) {
          myCout << "   - " << sample << ": ";
          auto yieldRFV = RFV_map[reg][sample]; // we re-use the one created for the pre-fit
@@ -226,7 +229,7 @@ EXOSTATS::YieldTable EXOSTATS::HistFactoryInspector::getYields(Bool_t asymErrors
          myCout << rfv_val << " +/- ";
          // const Double_t rfv_err = yieldRFV->getPropagatedError(*fitResult);
          const Double_t rfv_err = getPropagatedError(yieldRFV, *fitResult, asymErrors);
-         myCout << rfv_err << std::endl;
+         myCout << rfv_err << endl;
 
          result.first[reg][sample].first  = rfv_val;
          result.first[reg][sample].second = rfv_err;
@@ -240,31 +243,31 @@ EXOSTATS::YieldTable EXOSTATS::HistFactoryInspector::getYields(Bool_t asymErrors
       }
    }
 
-   std::cout << myCout.str() << std::endl;
+   cout << myCout.str() << std::endl;
 
    return EXOSTATS::YieldTable();
 }
 
-EXOSTATS::ImpactTable EXOSTATS::HistFactoryInspector::getImpacts(std::vector<TString> samples)
+EXOSTATS::ImpactTable EXOSTATS::HistFactoryInspector::getImpacts(vector<TString> samples)
 {
    // prefit
-   std::stringstream myCout; // let's print everything at the end of the job, to avoid being flooded by RooFit printouts
+   stringstream myCout; // let's print everything at the end of the job, to avoid being flooded by RooFit printouts
    myCout << "\n\n\nPRE-FIT IMPACTS\n*****************\n\n";
    m_w->loadSnapshot(m_prefitSnap); // crucial!
 
-   std::map<TString, RooFormulaVar *> RFV_map; // key: region
+   map<TString, RooFormulaVar *> RFV_map; // key: region
 
    ImpactTable result;
    result.first = ImpactTableElement();
-   std::map<TString, TString> summedSamples;
+   map<TString, TString> summedSamples;
    for (auto kv : m_samples) {
       auto reg = kv.first;
-      myCout << "region: " << reg << std::endl;
+      myCout << "region: " << reg << endl;
 
       // we will sum up all samples, among those requested, which are present in this regions
-      std::vector<TString> vec;
+      vector<TString> vec;
       for (auto sample : kv.second) {
-         if (std::find(samples.begin(), samples.end(), sample) != samples.end()) {
+         if (find(samples.begin(), samples.end(), sample) != samples.end()) {
             vec.push_back(sample);
 
             if (summedSamples[reg] == "")
@@ -278,14 +281,14 @@ EXOSTATS::ImpactTable EXOSTATS::HistFactoryInspector::getImpacts(std::vector<TSt
       auto yieldRFV = RFV_map[reg];
 
       const Double_t rfv_val = yieldRFV->getVal();
-      myCout << rfv_val << std::endl; // we don't retrieve the error
+      myCout << rfv_val << endl; // we don't retrieve the error
 
       for (auto np : getFreeParameters()) {
          auto var                     = getYieldUpDown(np, yieldRFV, kFALSE, kFALSE, kFALSE);
          result.first[reg][np].first  = var.first / rfv_val - 1;
          result.first[reg][np].second = var.second / rfv_val - 1;
          myCout << "        - " << np << ": (up, down) = (" << prd(result.first[reg][np].first * 100, 2) << "%, "
-                << prd(result.first[reg][np].second * 100, 2) << "%)" << std::endl;
+                << prd(result.first[reg][np].second * 100, 2) << "%)" << endl;
       }
    }
 
@@ -303,14 +306,14 @@ EXOSTATS::ImpactTable EXOSTATS::HistFactoryInspector::getImpacts(std::vector<TSt
    for (auto kv : m_samples) {
       m_w->loadSnapshot(m_postfitSnap);
       auto reg = kv.first;
-      myCout << "region: " << reg << std::endl;
+      myCout << "region: " << reg << endl;
       myCout << "   - " << summedSamples[reg] << ": yield = ";
       auto yieldRFV = RFV_map[reg];
 
       const Double_t rfv_val = yieldRFV->getVal();
       myCout << rfv_val << " +/- ";
       const Double_t rfv_err = getPropagatedError(yieldRFV, *fitResult, kTRUE);
-      myCout << rfv_err << std::endl;
+      myCout << rfv_err << endl;
 
       for (auto np : getFreeParameters()) {
          m_w->loadSnapshot(m_postfitSnap);
@@ -318,7 +321,7 @@ EXOSTATS::ImpactTable EXOSTATS::HistFactoryInspector::getImpacts(std::vector<TSt
          result.first[reg][np].first  = var.first / rfv_val - 1;
          result.first[reg][np].second = var.second / rfv_val - 1;
          myCout << "        - " << np << ": (up, down) = (" << prd(result.first[reg][np].first * 100, 2) << "%, "
-                << prd(result.first[reg][np].second * 100, 2) << "%)" << std::endl;
+                << prd(result.first[reg][np].second * 100, 2) << "%)" << endl;
       }
    }
 
@@ -327,7 +330,7 @@ EXOSTATS::ImpactTable EXOSTATS::HistFactoryInspector::getImpacts(std::vector<TSt
       delete kv.second;
    }
 
-   std::cout << myCout.str() << std::endl;
+   cout << myCout.str() << std::endl;
 
    return result;
 }
@@ -352,7 +355,7 @@ void EXOSTATS::HistFactoryInspector::retrieveSampleNames(TString region)
 
    for (auto prodName : m_products[region]) {
       const Int_t matched = re.Match(prodName);
-      if (matched != 2) throw std::runtime_error(TString::Format("Unable to parse RooProduct name"));
+      if (matched != 2) throw runtime_error(TString::Format("Unable to parse RooProduct name"));
       m_samples[region].push_back(re[1]);
    }
 }
@@ -385,7 +388,7 @@ void EXOSTATS::HistFactoryInspector::retrieveRooProductNames(TString region)
    const TString  rrsPdfName = TString::Format("%s_model", region.Data()); // hardcoded in HistFactory
    RooRealSumPdf *rrsPdf = dynamic_cast<RooRealSumPdf *>(m_simPdf->getPdf(region)->getComponents()->find(rrsPdfName));
 
-   std::vector<TString> result;
+   vector<TString> result;
 
    TIterator *itr = rrsPdf->funcList().createIterator();
 
@@ -409,10 +412,10 @@ void EXOSTATS::HistFactoryInspector::retrieveRooProductNames(TString region)
 /// the sum of the corresponding components, and return its integral in the form of a RooFormulaVar
 /// so that getVal() will tell us the number of events associated to this sum.
 /// A range for the integral can also be specified
-RooFormulaVar *EXOSTATS::HistFactoryInspector::retrieveYieldRFV(TString region, std::vector<TString> components)
+RooFormulaVar *EXOSTATS::HistFactoryInspector::retrieveYieldRFV(TString region, vector<TString> components)
 {
    if (components.size() < 1) {
-      throw std::runtime_error("component list is empty");
+      throw runtime_error("component list is empty");
    }
 
    RooAbsPdf *regPdf = m_simPdf->getPdf(region);
@@ -430,7 +433,7 @@ RooFormulaVar *EXOSTATS::HistFactoryInspector::retrieveYieldRFV(TString region, 
    RooArgList compFuncList;
    RooArgList compCoefList;
 
-   std::vector<TString> available = m_products[region];
+   vector<TString> available = m_products[region];
 
    for (auto avail : available) {
       for (auto wanted : components) {
@@ -444,7 +447,7 @@ RooFormulaVar *EXOSTATS::HistFactoryInspector::retrieveYieldRFV(TString region, 
    }
 
    if (compFuncList.getSize() == 0 || compCoefList.getSize() == 0 || compFuncList.getSize() != compCoefList.getSize()) {
-      throw std::runtime_error("something went wrong when fetching components");
+      throw runtime_error("something went wrong when fetching components");
       // return 0;
    }
 
@@ -478,8 +481,8 @@ RooFormulaVar *EXOSTATS::HistFactoryInspector::retrieveYieldRFV(TString region, 
 /// \param[out] form_frac pointer to the output RooFormulaVar
 ///
 /// See the single-region version of retrieveYieldRFV() for more details
-RooFormulaVar *EXOSTATS::HistFactoryInspector::retrieveYieldRFV(std::vector<TString> regions,
-                                                                std::vector<TString> components)
+RooFormulaVar *EXOSTATS::HistFactoryInspector::retrieveYieldRFV(vector<TString> regions,
+                                                                vector<TString> components)
 {
    RooArgList list;
    TString    form      = "";
@@ -516,7 +519,7 @@ RooFormulaVar *EXOSTATS::HistFactoryInspector::retrieveYieldRFV(std::vector<TStr
 /// \param[out] fitResult the fit result, if \c saveResult is \c kTRUE
 ///
 /// To do the job, this function defines a new simultaneous PDF and a new dataset, including only fit regions.
-RooFitResult *EXOSTATS::HistFactoryInspector::fitPdfInRegions(std::vector<TString> regions, Bool_t saveResult,
+RooFitResult *EXOSTATS::HistFactoryInspector::fitPdfInRegions(vector<TString> regions, Bool_t saveResult,
                                                               Bool_t doMinos)
 {
    // TODO: use the better fitting technique used by HistFitter's Util::FitPdf
@@ -529,12 +532,12 @@ RooFitResult *EXOSTATS::HistFactoryInspector::fitPdfInRegions(std::vector<TStrin
    RooDataSet *     data = dynamic_cast<RooDataSet *>(dataFull);
 
    // determine useful terms
-   std::vector<RooAbsPdf *>  pdfVec;
-   std::vector<RooDataSet *> dataVec;
+   vector<RooAbsPdf *>  pdfVec;
+   vector<RooDataSet *> dataVec;
 
    for (auto region : regions) {
       if (m_cat->setLabel(region, kTRUE)) {
-         throw std::runtime_error("Unknown region found");
+         throw runtime_error("Unknown region found");
       } else {
          RooDataSet *regionData = dynamic_cast<RooDataSet *>(
             data->reduce(TString::Format("%s==%s::%s", m_cat->GetName(), m_cat->GetName(), region.Data())));
@@ -546,7 +549,7 @@ RooFitResult *EXOSTATS::HistFactoryInspector::fitPdfInRegions(std::vector<TStrin
    }
 
    if (dataVec.size() == 0 || pdfVec.size() == 0 || dataVec.size() != pdfVec.size() || dataVec.size() != regions.size())
-      throw std::runtime_error("Error in specified regions");
+      throw runtime_error("Error in specified regions");
 
    // merge terms
    const TString nickname = join("_", regions);
@@ -585,11 +588,11 @@ RooFitResult *EXOSTATS::HistFactoryInspector::fitPdfInRegions(std::vector<TStrin
 ///
 /// Note that, for OverallSys uncertainties and fit deactivated, the output of this function
 /// must be ~identical to what specified in the HistFactory's XMLs.
-std::pair<Double_t, Double_t> EXOSTATS::HistFactoryInspector::getYieldUpDown(TString param, RooFormulaVar *yield,
+pair<Double_t, Double_t> EXOSTATS::HistFactoryInspector::getYieldUpDown(TString param, RooFormulaVar *yield,
                                                                              Bool_t useErrorVar, Bool_t doFit,
                                                                              Bool_t doMinos)
 {
-   std::pair<Double_t, Double_t> result;
+   pair<Double_t, Double_t> result;
 
    auto         var         = m_w->var(param);
    const Bool_t wasConstant = var->isConstant();
@@ -627,7 +630,7 @@ std::pair<Double_t, Double_t> EXOSTATS::HistFactoryInspector::getYieldUpDown(TSt
 /// \param[out] result vector of nuisance parameter names
 ///
 /// Gets list of free parameters (i.e. non-constant parameters)
-std::vector<TString> EXOSTATS::HistFactoryInspector::getFreeParameters()
+vector<TString> EXOSTATS::HistFactoryInspector::getFreeParameters()
 {
    // TODO: use RooStats::RemoveConstantParameters instead of the manual thing...
    const RooArgSet *NPs = m_mc->GetNuisanceParameters();
@@ -636,12 +639,12 @@ std::vector<TString> EXOSTATS::HistFactoryInspector::getFreeParameters()
 
    TObject *np = itr->Next();
 
-   std::vector<TString> result;
+   vector<TString> result;
 
    while (np) {
       RooAbsArg *raa = dynamic_cast<RooAbsArg *>(np);
       if (m_debugLevel <= 1)
-         std::cout << "NP named " << raa->GetName() << " has constant=" << raa->isConstant() << std::endl;
+         cout << "NP named " << raa->GetName() << " has constant=" << raa->isConstant() << std::endl;
       if (raa->isConstant() == kFALSE) result.push_back(np->GetName());
       np = itr->Next();
    }
@@ -654,7 +657,7 @@ std::vector<TString> EXOSTATS::HistFactoryInspector::getFreeParameters()
 Double_t EXOSTATS::HistFactoryInspector::getPropagatedError(RooAbsReal *var, const RooFitResult &fitResult,
                                                             const Bool_t doAsym)
 {
-   if (m_debugLevel <= 1) std::cout << " GPP for variable = " << var->GetName() << std::endl;
+   if (m_debugLevel <= 1) cout << " GPP for variable = " << var->GetName() << std::endl;
    // Clone self for internal use
    RooAbsReal *cloneFunc   = var; //(RooAbsReal*) var->cloneTree();
    RooArgSet * errorParams = cloneFunc->getObservables(fitResult.floatParsFinal());
@@ -663,7 +666,7 @@ Double_t EXOSTATS::HistFactoryInspector::getPropagatedError(RooAbsReal *var, con
    // Make list of parameter instances of cloneFunc in order of error matrix
    RooArgList        paramList;
    const RooArgList &fpf = fitResult.floatParsFinal();
-   std::vector<int>  fpf_idx;
+   vector<int>  fpf_idx;
    for (Int_t i = 0; i < fpf.getSize(); i++) {
       RooAbsArg *par = errorParams->find(fpf[i].GetName());
       if (par) {
@@ -674,7 +677,7 @@ Double_t EXOSTATS::HistFactoryInspector::getPropagatedError(RooAbsReal *var, con
       }
    }
 
-   std::vector<Double_t> plusVar, minusVar;
+   vector<Double_t> plusVar, minusVar;
 
    TMatrixDSym V(fitResult.covarianceMatrix());
 
@@ -697,8 +700,8 @@ Double_t EXOSTATS::HistFactoryInspector::getPropagatedError(RooAbsReal *var, con
       }
 
       if (m_debugLevel <= 1)
-         std::cout << " GPP:  par = " << rrv.GetName() << " cenVal = " << cenVal << " errSym = " << errHes
-                   << " errAvgAsym = " << errAvg << std::endl;
+         cout << " GPP:  par = " << rrv.GetName() << " cenVal = " << cenVal << " errSym = " << errHes
+                   << " errAvgAsym = " << errAvg << endl;
 
       // Make Plus variation
       ((RooRealVar *)paramList.at(ivar))->setVal(cenVal + errVal);
@@ -712,7 +715,7 @@ Double_t EXOSTATS::HistFactoryInspector::getPropagatedError(RooAbsReal *var, con
    }
 
    TMatrixDSym         C(paramList.getSize());
-   std::vector<double> errVec(paramList.getSize());
+   vector<double> errVec(paramList.getSize());
    for (int i = 0; i < paramList.getSize(); i++) {
       int newII = fpf_idx[i];
       errVec[i] = sqrt(V(newII, newII));
@@ -738,7 +741,7 @@ Double_t EXOSTATS::HistFactoryInspector::getPropagatedError(RooAbsReal *var, con
    // Calculate error in linear approximation 1 variations and correlation coefficient
    Double_t sum = F * (C * F);
 
-   if (m_debugLevel >= 1) std::cout << " GPP : sum = " << sqrt(sum) << std::endl;
+   if (m_debugLevel >= 1) cout << " GPP : sum = " << sqrt(sum) << std::endl;
 
    return sqrt(sum);
 }
@@ -780,14 +783,14 @@ void EXOSTATS::HistFactoryInspector::resetError(const RooArgList &parList, const
    /// systematic by 1-sigma
 
    if (m_debugLevel <= 1)
-      std::cout << " starting with workspace: " << m_w->GetName() << "   parList.getSize(): " << parList.getSize()
-                << "  vetoList.size() = " << vetoList.getSize() << std::endl;
+      cout << " starting with workspace: " << m_w->GetName() << "   parList.getSize(): " << parList.getSize()
+                << "  vetoList.size() = " << vetoList.getSize() << endl;
 
    TIterator *iter = parList.createIterator();
    RooAbsArg *arg;
    while ((arg = (RooAbsArg *)iter->Next())) {
 
-      std::string UncertaintyName;
+      string UncertaintyName;
       if (arg->InheritsFrom("RooRealVar") && !arg->isConstant()) {
          UncertaintyName = arg->GetName();
       } else {
@@ -801,8 +804,8 @@ void EXOSTATS::HistFactoryInspector::resetError(const RooArgList &parList, const
       RooRealVar *var = m_w->var(UncertaintyName.c_str());
       if (!var) {
          if (m_debugLevel <= 2)
-            std::cout << "Could not find variable: " << UncertaintyName << " in workspace: " << m_w->GetName() << ": "
-                      << m_w << std::endl;
+            cout << "Could not find variable: " << UncertaintyName << " in workspace: " << m_w->GetName() << ": "
+                      << m_w << endl;
       }
 
       // Initialize
@@ -812,7 +815,7 @@ void EXOSTATS::HistFactoryInspector::resetError(const RooArgList &parList, const
       bool   resetRange(false);
 
       if (UncertaintyName == "") {
-         if (m_debugLevel <= 2) std::cout << "No Uncertainty Name provided" << std::endl;
+         if (m_debugLevel <= 2) cout << "No Uncertainty Name provided" << std::endl;
          throw - 1;
       }
       // If it is a standard (gaussian) uncertainty
@@ -829,9 +832,9 @@ void EXOSTATS::HistFactoryInspector::resetError(const RooArgList &parList, const
          RooGaussian *lumiConstr = (RooGaussian *)m_w->pdf("lumiConstraint");
          if (!lumiConstr) {
             if (m_debugLevel <= 2)
-               std::cout << "Could not find m_w->pdf('lumiConstraint') "
+               cout << "Could not find m_w->pdf('lumiConstraint') "
                          << " in workspace: " << m_w->GetName() << ": " << m_w
-                         << " when trying to reset error for parameter: Lumi" << std::endl;
+                         << " when trying to reset error for parameter: Lumi" << endl;
             continue;
          }
          // Get the uncertainty on the Lumi:
@@ -850,15 +853,15 @@ void EXOSTATS::HistFactoryInspector::resetError(const RooArgList &parList, const
 
          // Get the constraint and check its type:
          RooAbsReal *constraint     = (RooAbsReal *)m_w->obj((UncertaintyName + "_constraint").c_str());
-         std::string ConstraintType = "";
+         string ConstraintType = "";
          if (constraint != 0) {
             ConstraintType = constraint->IsA()->GetName();
          }
 
          if (ConstraintType == "") {
             if (m_debugLevel <= 1)
-               std::cout << "Assuming parameter :" << UncertaintyName << ": is a ShapeFactor and so unconstrained"
-                         << std::endl;
+               cout << "Assuming parameter :" << UncertaintyName << ": is a ShapeFactor and so unconstrained"
+                         << endl;
             continue;
          } else if (ConstraintType == "RooGaussian") {
             RooAbsReal *sigmaVar = (RooAbsReal *)m_w->obj((UncertaintyName + "_sigma").c_str());
@@ -878,7 +881,7 @@ void EXOSTATS::HistFactoryInspector::resetError(const RooArgList &parList, const
             resetRange = true;
          } else {
             if (m_debugLevel <= 2)
-               std::cout << "Strange constraint type for Stat Uncertainties: " << ConstraintType << std::endl;
+               cout << "Strange constraint type for Stat Uncertainties: " << ConstraintType << std::endl;
             throw - 1;
          }
 
@@ -886,9 +889,9 @@ void EXOSTATS::HistFactoryInspector::resetError(const RooArgList &parList, const
       else {
          // Some unknown uncertainty
          if (m_debugLevel <= 1) {
-            std::cout << "Couldn't identify type of uncertainty for parameter: " << UncertaintyName
-                      << ". Assuming a normalization factor." << std::endl;
-            std::cout << "Setting uncertainty to 0.0001 before the fit for parameter: " << UncertaintyName << std::endl;
+            cout << "Couldn't identify type of uncertainty for parameter: " << UncertaintyName
+                      << ". Assuming a normalization factor." << endl;
+            cout << "Setting uncertainty to 0.0001 before the fit for parameter: " << UncertaintyName << std::endl;
          }
          sigma      = 0.0001;
          val_low    = var->getVal() - sigma;
@@ -907,9 +910,9 @@ void EXOSTATS::HistFactoryInspector::resetError(const RooArgList &parList, const
       }
 
       if (m_debugLevel <= 1)
-         std::cout << "Uncertainties on parameter: " << UncertaintyName << " low: " << val_low << " high: " << val_hi
+         cout << "Uncertainties on parameter: " << UncertaintyName << " low: " << val_low << " high: " << val_hi
                    << " sigma: " << sigma << " min range: " << var->getMin() << " max range: " << var->getMax()
-                   << std::endl;
+                   << endl;
 
       // Done
    } // end loop
