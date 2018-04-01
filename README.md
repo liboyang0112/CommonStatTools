@@ -33,6 +33,22 @@ After the first checkout, please make sure you have the latest version with `git
 A testing file is provided, `test.sh`. You can edit it to point to your favourite RooWorkspace and run it.
 If your workspace was not generated via HistFactory, some of the tools won't of course run.
 
+To include this package in your macros, you can also simply do something like:
+```
+#include "exostats/Minimization.h"
+
+R__LOAD_LIBRARY(exostats/build/libExoStats.so)
+// R__LOAD_LIBRARY(exostats/Minimization.C+) uncomment this if you did not run cmake+make
+
+void test() {
+
+RooWorkspace w;
+w.factory("Gaussian::pdf(x[-100,100],mean[-10,10],sigma[0.1,10])");
+auto data = w.pdf("pdf")->generate(*w.var("x"),100000);
+EXOSTATS::fitPdf(w.pdf("pdf"), data);
+}
+```
+
 ## For users
 
 This repository collects code to:
