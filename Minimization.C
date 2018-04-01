@@ -6,6 +6,7 @@
 #include <RooWorkspace.h>
 #include <RooNLLVar.h>
 #include <RooAbsReal.h>
+#include <RooStats/ModelConfig.h>
 
 #include "Minimization.h"
 
@@ -14,10 +15,11 @@ using namespace std;
 ////////////////////////////////////////////////////
 /// See minimize(RooAbsReal, ...) for details.
 int EXOSTATS::minimize(RooNLLVar *nll, Int_t maxRetries, RooWorkspace *w, TString mu0Snapshot, TString nominalSnapshot,
-                       Int_t debugLevel, Bool_t saveFitResult, RooFitResult **fitResult)
+                       Int_t debugLevel, Bool_t saveFitResult, RooFitResult **fitResult, Bool_t doMinos)
 {
    RooAbsReal *fcn = (RooAbsReal *)nll;
-   return EXOSTATS::minimize(fcn, maxRetries, w, mu0Snapshot, nominalSnapshot, debugLevel, saveFitResult, fitResult);
+   return EXOSTATS::minimize(fcn, maxRetries, w, mu0Snapshot, nominalSnapshot, debugLevel, saveFitResult, fitResult,
+                             doMinos);
 }
 
 ////////////////////////////////////////////////////
@@ -29,17 +31,19 @@ int EXOSTATS::minimize(RooNLLVar *nll, Int_t maxRetries, RooWorkspace *w, TStrin
 /// \param[in] debugLevel debug level (0 = verbose, 1 = debug, 2 = warning, 3 = error, 4 = fatal, 5 = silent)
 /// \param[in] saveFitResult save fit results
 /// \param[in] RooFitResult pointer to a pointer to a RooFitResult object, where fit results will be stored
+/// \param[in] doMinos run Minos for error calculation
 /// \param[out] status status of the minimization
-/// 
+///
 /// The minimization is attempted in a iterative way, by playing with the Minuit version and strategy, until convergence
 /// is reached or the maximum number of retrials has been tried.
-/// 
-/// If \c w is different from \c nullptr, the two specified parameter snapshots will also be used as a desperate measure
-/// to improve fit stability. 
 ///
-/// Fit results can be optionally saved by activating the option \c saveFitResult and passing a pointer to a pointer to RooFitResult.
+/// If \c w is different from \c nullptr, the two specified parameter snapshots will also be used as a desperate measure
+/// to improve fit stability.
+///
+/// Fit results can be optionally saved by activating the option \c saveFitResult and passing a pointer to a pointer to
+/// RooFitResult.
 int EXOSTATS::minimize(RooAbsReal *fcn, Int_t maxRetries, RooWorkspace *w, TString mu0Snapshot, TString nominalSnapshot,
-                       Int_t debugLevel, Bool_t saveFitResult, RooFitResult **fitResult)
+                       Int_t debugLevel, Bool_t saveFitResult, RooFitResult **fitResult, Bool_t doMinos)
 {
    static int nrItr = 0;
    if (debugLevel == 0) {
@@ -146,10 +150,75 @@ int EXOSTATS::minimize(RooAbsReal *fcn, Int_t maxRetries, RooWorkspace *w, TStri
    if (nrItr != 0) cout << "Successful fit" << endl;
    nrItr = 0;
 
+   if (doMinos) {
+      minim.minos();
+   }
+
    // save
    if (saveFitResult) {
-     *fitResult = minim.save();
+      *fitResult = minim.save();
    }
 
    return status;
+}
+
+/// \param[in] modelConfig pointer to the \c ModelConfig to take the p.d.f. from
+/// \param[in] data dataset
+/// \param[in] numCPU number of CPUs to use in the likelihood calculation
+/// \param[out] nll negative log-likelihood
+RooNLLVar *EXOSTATS::createNLL(RooStats::ModelConfig *modelConfig, RooAbsData *data, Int_t numCPU)
+{
+   return EXOSTATS::createNLL(modelConfig->GetPdf(), data, modelConfig->GetNuisanceParameters(), numCPU);
+}
+
+/// \param[in] pdf pointer to the p.d.f
+/// \param[in] data dataset
+/// \param[in] nuis nuisance parameters (if any)
+/// \param[in] numCPU number of CPUs to use in the likelihood calculation
+/// \param[out] nll negative log-likelihood
+RooNLLVar *EXOSTATS::createNLL(RooAbsPdf *pdf, RooAbsData *data, const RooArgSet *nuis, Int_t numCPU)
+{
+   RooNLLVar *nll = nullptr;
+   if (nuis != 0)
+      nll = (RooNLLVar *)pdf->createNLL(*data, RooFit::Constrain(*nuis), RooFit::NumCPU(numCPU, 3),
+                                        RooFit::Optimize(2), RooFit::Offset(true));
+   else
+      nll = (RooNLLVar *)pdf->createNLL(*data, RooFit::NumCPU(numCPU, 3), RooFit::Optimize(2), RooFit::Offset(true));
+   return nll;
+}
+
+/// \param[in] modelConfig pointer to the \c ModelConfig to take the p.d.f. from
+/// \param[in] data dataset
+/// \param[in] doMinos if true, Minos errors are calculated
+/// \param[in] numCPU number of CPUs to use in the likelihood calculation
+/// \param[out] status Minuit status
+Int_t EXOSTATS::fit(RooStats::ModelConfig *modelConfig, RooAbsData *data, Bool_t doMinos, Int_t numCPU)
+{
+   return EXOSTATS::fit(modelConfig->GetPdf(), data, modelConfig->GetNuisanceParameters(), doMinos, numCPU);
+}
+
+/// \param[in] pdf pointer to the p.d.f
+/// \param[in] data dataset
+/// \param[in] doMinos if true, Minos errors are calculated
+/// \param[in] nuis nuisance parameters (if any)
+/// \param[in] numCPU number of CPUs to use in the likelihood calculation
+/// \param[out] status Minuit status
+Int_t EXOSTATS::fit(RooAbsPdf *pdf, RooAbsData *data, const RooArgSet *nuis, Bool_t doMinos, Int_t numCPU)
+{
+   auto nll = createNLL(pdf, data, nuis, numCPU);
+   return EXOSTATS::minimize(nll, 3, nullptr, "", "", 2, kFALSE, nullptr, doMinos);
+}
+
+/// \param[in] pdf pointer to the p.d.f
+/// \param[in] data dataset
+/// \param[in] doMinos if true, Minos errors are calculated
+/// \param[in] nuis nuisance parameters (if any)
+/// \param[in] numCPU number of CPUs to use in the likelihood calculation
+/// \param[out] result pointer to fit result
+RooFitResult *EXOSTATS::fit(RooAbsPdf *pdf, RooAbsData *data, Bool_t doMinos, const RooArgSet *nuis, Int_t numCPU)
+{
+   auto          nll = createNLL(pdf, data, nuis, numCPU);
+   RooFitResult *result;
+   EXOSTATS::minimize(nll, 3, nullptr, "", "", 2, kTRUE, &result, doMinos);
+   return result;
 }
