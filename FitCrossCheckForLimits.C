@@ -4370,7 +4370,7 @@ RooArgList LimitCrossChecker::getFloatParList(const RooAbsPdf &pdf, const RooArg
 // ================= Executable function =====================
 //============================================================
 
-void LimitCrossChecker::FitCrossCheckForLimits(const Algs algorithm, float mu, float sigma, bool IsConditional,
+void LimitCrossChecker::run(const Algs algorithm, float mu, float sigma, bool IsConditional,
                                                const char *infile, const char *outputdir, const char *workspaceName,
                                                const char *modelConfigName, const char *ObsDataName,
                                                bool draw1DResponse, bool createPostfitAsimov)

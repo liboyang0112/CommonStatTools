@@ -128,7 +128,7 @@ public:
                            const char *workspaceName = "combined", const char *modelConfigName = "ModelConfig",
                            const char *ObsDataName = "obsData");
 
-   void FitCrossCheckForLimits(const Algs algorithm = Algs::PlotHistosBeforeFit, float mu = 0, float sigma = 1,
+   void run(const Algs algorithm = Algs::PlotHistosBeforeFit, float mu = 0, float sigma = 1,
                                bool IsConditional = true, const char *infile = "WorkspaceForTest1.root",
                                const char *outputdir = "./results/", const char *workspaceName = "combined",
                                const char *modelConfigName = "ModelConfig", const char *ObsDataName = "obsData",
