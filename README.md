@@ -63,8 +63,8 @@ This repository collects code to:
   * rank nuisance parameters: `StatisticsTools/submit_pulls.py` (batch) and `StatisticsTools/pulls.exe` (local)
   * HistFactory-only: extract histograms from workspace files: `obtainHistosFromWS.py`
   * HistFactory-only: compare histograms between two different workspace files: `compareHistos.py`
-  * HistFactort-only: print pre- and post-fit yield tables: `getHFtables.C`
-  * HistFactort-only: evaluate the impact of nuisance parameters over a yield (signal or background) in a channel, possibly after fitting different channels: `getHFtables.C`
+  * HistFactory-only: print pre- and post-fit yield tables: `getHFtables.C`
+  * HistFactory-only: evaluate the impact of nuisance parameters over a yield (signal or background) in a channel, possibly after fitting different channels: `getHFtables.C`
 
 In a few cases, classes were also made available in order for developers to be able to fully configure and customize these tools: see the dedicated section for more details.
 
