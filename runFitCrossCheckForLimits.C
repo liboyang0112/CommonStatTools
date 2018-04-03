@@ -49,6 +49,8 @@ void runFitCrossCheckForLimits(Algs algorithm, const char *inputFile, const char
 {
    LimitCrossChecker fitcheck;
    fitcheck.setDebugLevel(2);
+
+   outputFolder = outputFolder + "/crosschecks";
    fitcheck.run(algorithm, signalStrength, numberOfSigmas, doConditional, inputFile, outputFolder,
                                    workspaceName, modelConfigName, dataName, draw1DResponse, createPostFitAsimov);
 }
