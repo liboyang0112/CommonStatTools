@@ -38,7 +38,8 @@ To include this package in your macros, you can also simply do something like:
 #include "exostats/Minimization.h"
 
 R__LOAD_LIBRARY(exostats/build/libExoStats.so)
-// R__LOAD_LIBRARY(exostats/Minimization.C+) uncomment this if you did not run cmake+make
+//R__LOAD_LIBRARY(exostats/build/libExoStats.dylib) // on macOS
+// R__LOAD_LIBRARY(exostats/Minimization.C+) // uncomment this if you did not run cmake+make for some reason
 
 void test() {
 
