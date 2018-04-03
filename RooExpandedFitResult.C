@@ -12,7 +12,7 @@
  *                                                                                *
  **********************************************************************************/
 
-#include <RooExpandedFitResult.h>
+#include "RooExpandedFitResult.h"
 
 #include <RooRealVar.h>
 #include <iostream>
