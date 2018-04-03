@@ -22,9 +22,12 @@ def getHistograms(a, outdir=0):
               raise RuntimeError('Object is not a TH1F or TH1D')
   return result
 
-def run(inputname, outputname):
+def run(inputname, outputname, force_overwrite):
   f_in = ROOT.TFile.Open(inputname)
-  f_out = ROOT.TFile.Open(outputname, 'CREATE')
+  if force_overwrite:
+    f_out = ROOT.TFile.Open(outputname, 'RECREATE')
+  else:
+    f_out = ROOT.TFile.Open(outputname, 'CREATE')
   
   getHistograms(f_in, f_out)
   f_out.Write()
@@ -37,6 +40,7 @@ if __name__ == '__main__':
   parser = ArgumentParser(description='extract histograms from an HistFactory workspace file and put them elsewhere', add_help=True)
   parser.add_argument('-i', '--input', type=str, dest='input', help='path to the workspace file', metavar='input')
   parser.add_argument('-o', '--output', type=str, dest='output', help='path to the output ROOT file', metavar='output')
+  parser.add_argument('-f', '--force-overwrite', action='store_true', dest='force_overwrite', help='overwrite the output ROOT file')
   
   options = parser.parse_args()
   
@@ -45,5 +49,5 @@ if __name__ == '__main__':
   if (options.output == None):
     parser.error('Must specify old and new files')
   
-  run(options.input, options.output)
+  run(options.input, options.output, options.force_overwrite)
 
