@@ -20,7 +20,7 @@ setupATLAS
 lsetup git
 lsetup ROOT
 lsetup cmake
-git clone https://:@gitlab.cern.ch:8443/vippolit/exostats.git
+git clone --recurse-submodules https://:@gitlab.cern.ch:8443/vippolit/exostats.git
 cd exostats
 mkdir build
 cd build 
