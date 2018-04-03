@@ -19,9 +19,9 @@
 #ifndef ROOEXPANDEDFITRESULT_H
 #define ROOEXPANDEDFITRESULT_H
 
-#include "TString.h"
-#include "RooFitResult.h"
-#include "RooArgList.h"
+#include <TString.h>
+#include <RooFitResult.h>
+#include <RooArgList.h>
 
 #include <iostream>
 #include <vector>

@@ -7,6 +7,7 @@
 R__LOAD_LIBRARY(Minimization.C+)
 R__LOAD_LIBRARY(AsimovDataMaking.C+)
 R__LOAD_LIBRARY(AsymptoticsCLsRunner.C+g)
+//R__LOAD_LIBRARY(exostats/build/libExoStats.so)
 
 /// Runs the CLs limit using profile likelihood and asymptotic formulae
 ///

@@ -4,6 +4,7 @@
 
 R__LOAD_LIBRARY(RooExpandedFitResult.C+)
 R__LOAD_LIBRARY(HistFactoryInspector.C+)
+//R__LOAD_LIBRARY(exostats/build/libExoStats.so)
 
 /// Prints yield tables and nuisance parameter impact tables from a HistFactory workspace
 ///

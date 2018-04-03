@@ -13,26 +13,26 @@ to choose which mu value to profile observed data at before generating expected
 
 */
 
-#include "RooWorkspace.h"
-#include "RooStats/ModelConfig.h"
-#include "RooDataSet.h"
-#include "RooMinimizerFcn.h"
-#include "RooNLLVar.h"
-#include "RooRealVar.h"
-#include "RooSimultaneous.h"
-#include "RooCategory.h"
-#include "RooRealSumPdf.h"
-#include "Math/MinimizerOptions.h"
-#include "RooMinimizer.h"
+#include <RooWorkspace.h>
+#include <RooStats/ModelConfig.h>
+#include <RooDataSet.h>
+#include <RooMinimizerFcn.h>
+#include <RooNLLVar.h>
+#include <RooRealVar.h>
+#include <RooSimultaneous.h>
+#include <RooCategory.h>
+#include <RooRealSumPdf.h>
+#include <Math/MinimizerOptions.h>
+#include <RooMinimizer.h>
 
-#include "TH1D.h"
+#include <TH1D.h>
 
-#include "TStopwatch.h"
+#include <TStopwatch.h>
 
 #include "Minimization.h"
 #include "AsimovDataMaking.h"
 
-#include "TFile.h"
+#include <TFile.h>
 
 #include <iostream>
 #include <iomanip>
@@ -40,6 +40,7 @@ to choose which mu value to profile observed data at before generating expected
 
 R__LOAD_LIBRARY(Minimization.C+)
 R__LOAD_LIBRARY(AsimovDataMaking.C+)
+//R__LOAD_LIBRARY(exostats/build/libExoStats.so)
 
 using namespace std;
 using namespace RooFit;
