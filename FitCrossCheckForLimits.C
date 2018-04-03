@@ -96,108 +96,50 @@ Updates:
 
 // macros
 #include "AsimovDataMaking.h"
+#include "FitCrossCheckForLimits.h"
 
 using namespace std;
 using namespace RooFit;
 using namespace RooStats;
 
-struct NPContainer {
-   TString NPname;
-   double  NPvalue;
-   double  NPerrorHi;
-   double  NPerrorLo;
-   TString WhichFit;
-};
-
-static bool comp_second_abs_decend(const pair<RooRealVar *, float> &i, const pair<RooRealVar *, float> &j)
+LimitCrossChecker::LimitCrossChecker()
 {
-   return fabs(i.second) > fabs(j.second);
+   resetParams();
 }
 
-namespace LimitCrossCheck {
+void LimitCrossChecker::resetParams()
+{
+   drawPlots            = false;
+   plotRelative         = false;
+   draw1DResponse       = false;
+   writePostfitAsimData = false;
+   UseMinosError        = false;
+   blind                = false;
+   makePostFitPlots     = false;
+   PullMaxAcceptable    = 1.5;
+   ErrorMinAcceptable   = 0.2;
+   xAxisLabel           = "Final Distribution";
+   nJobs                = 1;
+   iJob                 = 0;
+}
 
-// Global variables;
-// User configuration one
-bool    drawPlots(false);                 // create eps & png files and creat a webpage
-bool    plotRelative(false);              // plot % shift of systematic
-bool    draw1DResponse(false);            // draw 1D response for each NP
-bool    writePostfitAsimData(false);      // create and add to workspace Asimov data created from fit
-bool    UseMinosError(false);             // compute minos error (if false : use minuit error)
-bool    blind(false);                     // blind di-jet mass from 100-150 GeV
-bool    makePostFitPlots(false);          // takes a lot of time and the error band is wrong
-double  PullMaxAcceptable(1.5);           // Threshold to consider a NP[central value] as suspicious
-double  ErrorMinAcceptable(0.2);          // Threshold to consider a NP[error] as suspicious
-TString xAxisLabel("Final Distribution"); // set what the x-axis of the distribution is
-int     nJobs(1);                         // number of subjobs for parallel processing
-int     iJob(0);                          // index of subjob: i = 0..n-1
+//////////////////////////////////////////////////////////////////////////
+/// Debug level: 0 = verbose, 1 = debug, 2 = warning, 3 = error, 4 = fatal, 5 = silent
+void LimitCrossChecker::setDebugLevel(Int_t value)
+{
+   debugLevel = value;
+}
 
-// not switches
-RooWorkspace *      w;
-ModelConfig *       mc;
-RooAbsData *        data;
-TFile *             outputfile;
-double              LumiRelError;
-TDirectory *        MainDirSyst;
-TDirectory *        MainDirMorphing;
-TDirectory *        MainDirFitEachSubChannel;
-TDirectory *        MainDirFitGlobal;
-TDirectory *        MainDirModelInspector;
-TDirectory *        MainDirStatTest;
-TDirectory *        MainDirFitAsimov;
-map<string, double> MapNuisanceParamNom;
-vector<NPContainer> AllNPafterEachFit;
-TString             OutputDir;
-
-// Global functions
-RooFitResult *FitPDF(ModelConfig *model, RooAbsPdf *fitpdf, RooAbsData *fitdata, TString minimType = "Minuit2");
-void          PlotHistosBeforeFit(double nSigmaToVary, double mu);
-void          PlotMorphingControlPlots();
-void          PlotHistosAfterFitEachSubChannel(bool IsConditionnal, double mu);
-void          PlotHistosAfterFitGlobal(bool IsConditionnal, double mu, bool isAsimov = false);
-void          PlotsNuisanceParametersVSmu();
-void          PlotsStatisticalTest(double mu_pe, double mu_hyp, int nToyMC = 100, int rndmSeed = 0);
-void          Plot1DResponse(RooAbsReal *nll, RooRealVar *var, TString cname, TCanvas *can, TF1 *poly, bool IsFloating,
-                             TLatex *latex, TDirectory *tdir, RooArgSet *SliceSet = 0);
-void   Plot1DResponseNew(RooAbsReal *nll, RooRealVar *var, TString cname, TCanvas *can, bool IsFloating, TLatex *latex,
-                         TDirectory *tdir, TString snapshotName);
-TTree *createObservableTree(ModelConfig *model);
-void   setObservableTreeValues(ModelConfig *model, TTree *tree);
-double FindMuUpperLimit();
-void   PrintModelObservables();
-void   PrintNuisanceParameters();
-void   PrintAllParametersAndValues(RooArgSet para);
-void   PrintNumberOfEvents(RooAbsPdf *pdf);
-void   FindConstants(RooAbsPdf *pdf);
-void   PrintSubChannels();
-void   PrintSuspiciousNPs();
-bool   IsSimultaneousPdfOK();
-bool   IsChannelNameOK();
-void   SetAllNuisanceParaToSigma(double Nsigma);
-void   SetAllStatErrorToSigma(double Nsigma);
-void   SetNuisanceParaToSigma(RooRealVar *var, double Nsigma);
-void   GetNominalValueNuisancePara();
-void   SetNominalValueNuisancePara();
-void   SetPOI(double mu);
-void   SetStyle();
-void   LegendStyle(TLegend *l);
-int    GetPosition(RooRealVar *var, TH2D *corrMatrix);
-list<pair<RooRealVar *, float>> GetOrderedCorrelations(RooRealVar *var, RooFitResult *fitres);
-TCanvas *DrawShift(TString channel, TString var, TString comp, double mu, TH1 *d, TH1 *n, TH1 *p1s, TH1 *m1s);
-TH1F *   MakeHist(TString name, RooCurve *curve);
-TH1F *   ConvertGraphToHisto(TGraph *pGraph);
-TH2D *   GetSubsetOfCorrMatrix(RooRealVar *var, list<pair<RooRealVar *, float>> &pairs, RooFitResult *fitres, int size);
-void     FillGraphIntoHisto(TGraph *pGraph, TH1F *pHisto);
-void     Initialize(const char *infile, const char *outputdir, const char *workspaceName, const char *modelConfigName,
-                    const char *ObsDataName);
-void     Finalize(const char *infile);
-RooArgList getFloatParList(const RooAbsPdf &pdf, const RooArgSet &obsSet = RooArgSet());
+Int_t LimitCrossChecker::getDebugLevel()
+{
+   return debugLevel;
+}
 
 //======================================================
 // ================= Main function =====================
 //======================================================
-void PlotFitCrossChecks(const char *infile = "WorkspaceForTest1.root", const char *outputdir = "./results/",
-                        const char *workspaceName = "combined", const char *modelConfigName = "ModelConfig",
-                        const char *ObsDataName = "obsData")
+void LimitCrossChecker::PlotFitCrossChecks(const char *infile, const char *outputdir, const char *workspaceName,
+                                           const char *modelConfigName, const char *ObsDataName)
 {
 
    Initialize(infile, outputdir, workspaceName, modelConfigName, ObsDataName);
@@ -257,7 +199,7 @@ void PlotFitCrossChecks(const char *infile = "WorkspaceForTest1.root", const cha
 // ============ Definition of Fitting Function ================
 // ============================================================
 
-RooFitResult *FitPDF(ModelConfig *model, RooAbsPdf *fitpdf, RooAbsData *fitdata, TString minimType)
+RooFitResult *LimitCrossChecker::FitPDF(ModelConfig *model, RooAbsPdf *fitpdf, RooAbsData *fitdata, TString minimType)
 {
    bool fancy(false);
    bool retryOnHesseFailure(false); // a bit less fancy
@@ -567,7 +509,7 @@ RooFitResult *FitPDF(ModelConfig *model, RooAbsPdf *fitpdf, RooAbsData *fitdata,
    return r;
 } // FitPDF
 
-void PlotHistosBeforeFit(double nSigmaToVary, double mu)
+void LimitCrossChecker::PlotHistosBeforeFit(double nSigmaToVary, double mu)
 {
    cout << endl << "Plotting Histos Before Fit " << endl;
    cout << "\t Plotting relative " << plotRelative << endl;
@@ -879,7 +821,8 @@ void PlotHistosBeforeFit(double nSigmaToVary, double mu)
 
 // create the canvas and put stuff on it
 // to be used when plotting the +/- 1 sigma shifts
-TCanvas *DrawShift(TString channel, TString var, TString comp, double mu, TH1 *d, TH1 *n, TH1 *p1s, TH1 *m1s)
+TCanvas *LimitCrossChecker::DrawShift(TString channel, TString var, TString comp, double mu, TH1 *d, TH1 *n, TH1 *p1s,
+                                      TH1 *m1s)
 {
    cout << " " << comp << endl;
    cout << "N(-sigma) = " << m1s->Integral() << endl;
@@ -1084,7 +1027,7 @@ TCanvas *DrawShift(TString channel, TString var, TString comp, double mu, TH1 *d
    return canvas;
 } // DrawShift
 
-void PlotMorphingControlPlots()
+void LimitCrossChecker::PlotMorphingControlPlots()
 {
 
    cout << endl << "Plotting Systematic morphing control plots" << endl;
@@ -1216,7 +1159,7 @@ void PlotMorphingControlPlots()
    return;
 }
 
-void PlotHistosAfterFitEachSubChannel(bool IsConditionnal, double mu)
+void LimitCrossChecker::PlotHistosAfterFitEachSubChannel(bool IsConditionnal, double mu)
 {
    cout << endl << "Plotting Histos After Fit in Each Subchannel" << endl;
 
@@ -1915,7 +1858,7 @@ void PlotHistosAfterFitEachSubChannel(bool IsConditionnal, double mu)
    return;
 }
 
-void PlotHistosAfterFitGlobal(bool IsConditionnal, double mu, bool isAsimov)
+void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu, bool isAsimov)
 {
    // isAsimov switch canvas names and the like
    TString globOrAsim;
@@ -2013,12 +1956,15 @@ void PlotHistosAfterFitGlobal(bool IsConditionnal, double mu, bool isAsimov)
    RooArgList       floatPars = getFloatParList(*simPdf, *obsSet);
    // create an Asimov dataset using the fitted parameters
    if (writePostfitAsimData) {
-    //RooAbsData *postfit_asimov_data = EXOSTATS::makeAsimovData(mc, 0, w, mc->GetPdf(), (RooDataSet *)localData,
-    //                                                 firstPOI->getVal()); // no fit and build asimov with mu=mu_asimov
-      RooArgSet nuiSet_tmp(*mc->GetNuisanceParameters()); // VI: should in principle do the unfolding within AsimovDataMaking.C?
-      auto nll = dynamic_cast<RooNLLVar*>(mc->GetPdf()->createNLL(*localData, RooFit::Constrain(nuiSet_tmp)));
-      RooAbsData *postfit_asimov_data = EXOSTATS::makeAsimovData(w, mc->GetName(), kFALSE, nll, firstPOI->getVal()); // no fit and build asimov with mu=mu_asimov
-      TString     asimName("asimovData_paramsVals_" + globOrAsim + "Fit");
+      // RooAbsData *postfit_asimov_data = EXOSTATS::makeAsimovData(mc, 0, w, mc->GetPdf(), (RooDataSet *)localData,
+      //                                                 firstPOI->getVal()); // no fit and build asimov with
+      //                                                 mu=mu_asimov
+      RooArgSet nuiSet_tmp(
+         *mc->GetNuisanceParameters()); // VI: should in principle do the unfolding within AsimovDataMaking.C?
+      auto        nll = dynamic_cast<RooNLLVar *>(mc->GetPdf()->createNLL(*localData, RooFit::Constrain(nuiSet_tmp)));
+      RooAbsData *postfit_asimov_data = EXOSTATS::makeAsimovData(
+         w, mc->GetName(), kFALSE, nll, firstPOI->getVal()); // no fit and build asimov with mu=mu_asimov
+      TString asimName("asimovData_paramsVals_" + globOrAsim + "Fit");
       if (IsConditionnal) {
          asimName.Append("_mu" + TString(Form("%4.2f", mu)));
       } else {
@@ -3070,8 +3016,8 @@ void PlotHistosAfterFitGlobal(bool IsConditionnal, double mu, bool isAsimov)
    return;
 }; // PlotHistosAfterFitGlobal
 
-void Plot1DResponse(RooAbsReal *nll, RooRealVar *var, TString cname, TCanvas *can, TF1 *poly, bool IsFloating,
-                    TLatex *latex, TDirectory *tdir, RooArgSet *SliceSet)
+void LimitCrossChecker::Plot1DResponse(RooAbsReal *nll, RooRealVar *var, TString cname, TCanvas *can, TF1 *poly,
+                                       bool IsFloating, TLatex *latex, TDirectory *tdir, RooArgSet *SliceSet)
 {
    TString vname = var->GetName();
    cout << "Varname: " << vname << endl;
@@ -3170,7 +3116,7 @@ void Plot1DResponse(RooAbsReal *nll, RooRealVar *var, TString cname, TCanvas *ca
    }
 } // Plot1DResponse
 
-TTree *createObservableTree(ModelConfig *model)
+TTree *LimitCrossChecker::createObservableTree(ModelConfig *model)
 {
    cout << "Creating observable tree ..." << endl;
    TTree *    tree      = new TTree();
@@ -3189,7 +3135,7 @@ TTree *createObservableTree(ModelConfig *model)
    return tree;
 }
 
-void setObservableTreeValues(ModelConfig *model, TTree *tree)
+void LimitCrossChecker::setObservableTreeValues(ModelConfig *model, TTree *tree)
 {
    RooArgSet *allParams = (RooArgSet *)model->GetParametersOfInterest()->Clone();
    allParams->add(*mc->GetNuisanceParameters());
@@ -3214,8 +3160,8 @@ void setObservableTreeValues(ModelConfig *model, TTree *tree)
    // tree -> Fill();
 }
 
-void Plot1DResponseNew(RooAbsReal *nll, RooRealVar *var, TString cname, TCanvas *can, bool IsFloating, TLatex *latex,
-                       TDirectory *tdir, TString snapshotName)
+void LimitCrossChecker::Plot1DResponseNew(RooAbsReal *nll, RooRealVar *var, TString cname, TCanvas *can,
+                                          bool IsFloating, TLatex *latex, TDirectory *tdir, TString snapshotName)
 {
 
    cout << "Load snapshot '" << snapshotName << "': ";
@@ -3378,7 +3324,7 @@ void Plot1DResponseNew(RooAbsReal *nll, RooRealVar *var, TString cname, TCanvas 
    }
 } // Plot1DResponse
 
-int GetPosition(RooRealVar *var, TH2D *corrMatrix)
+int LimitCrossChecker::GetPosition(RooRealVar *var, TH2D *corrMatrix)
 {
    int position(0);
    for (int b = 0; b < corrMatrix->GetNbinsX() + 2; b++) {
@@ -3391,7 +3337,7 @@ int GetPosition(RooRealVar *var, TH2D *corrMatrix)
    return position;
 } // Plot1DResponseNew
 
-list<pair<RooRealVar *, float>> GetOrderedCorrelations(RooRealVar *var, RooFitResult *fitres)
+list<pair<RooRealVar *, float>> LimitCrossChecker::GetOrderedCorrelations(RooRealVar *var, RooFitResult *fitres)
 {
    list<pair<RooRealVar *, float>> pairs;
    TIterator *                     inp = mc->GetNuisanceParameters()->createIterator();
@@ -3415,7 +3361,8 @@ list<pair<RooRealVar *, float>> GetOrderedCorrelations(RooRealVar *var, RooFitRe
    return pairs;
 } // GetOrderedCorrelations
 
-TH2D *GetSubsetOfCorrMatrix(RooRealVar *var, list<pair<RooRealVar *, float>> &pairs, RooFitResult *fitres, int size)
+TH2D *LimitCrossChecker::GetSubsetOfCorrMatrix(RooRealVar *var, list<pair<RooRealVar *, float>> &pairs,
+                                               RooFitResult *fitres, int size)
 {
    RooArgList corrNPs = RooArgList("corrNPs");
    // retrieve top "size" NPs and draw correlations in a 2D hist
@@ -3450,7 +3397,7 @@ TH2D *GetSubsetOfCorrMatrix(RooRealVar *var, list<pair<RooRealVar *, float>> &pa
    return redMat;
 } // GetSubsetOfCorrMatrix
 
-void PlotsNuisanceParametersVSmu()
+void LimitCrossChecker::PlotsNuisanceParametersVSmu()
 {
    cout << endl;
    cout << endl;
@@ -3475,7 +3422,7 @@ void PlotsNuisanceParametersVSmu()
    return;
 }
 
-void PlotsStatisticalTest(double mu_pe, double mu_hyp, int nToyMC, int rndmSeed)
+void LimitCrossChecker::PlotsStatisticalTest(double mu_pe, double mu_hyp, int nToyMC, int rndmSeed)
 {
 
    RooRandom::randomGenerator()->SetSeed(rndmSeed);
@@ -3770,7 +3717,7 @@ void PlotsStatisticalTest(double mu_pe, double mu_hyp, int nToyMC, int rndmSeed)
    return;
 }
 
-void PrintSuspiciousNPs()
+void LimitCrossChecker::PrintSuspiciousNPs()
 {
 
    cout.precision(3);
@@ -3853,7 +3800,7 @@ void PrintSuspiciousNPs()
    return;
 }
 
-double FindMuUpperLimit()
+double LimitCrossChecker::FindMuUpperLimit()
 {
 
    // RooMsgService::instance().setGlobalKillBelow(ERROR);
@@ -3880,7 +3827,7 @@ double FindMuUpperLimit()
    return UpperLimit;
 }
 
-void GetNominalValueNuisancePara()
+void LimitCrossChecker::GetNominalValueNuisancePara()
 {
    TIterator * it  = mc->GetNuisanceParameters()->createIterator();
    RooRealVar *var = NULL;
@@ -3893,7 +3840,7 @@ void GetNominalValueNuisancePara()
    return;
 }
 
-void SetNominalValueNuisancePara()
+void LimitCrossChecker::SetNominalValueNuisancePara()
 {
    TIterator * it  = mc->GetNuisanceParameters()->createIterator();
    RooRealVar *var = NULL;
@@ -3904,7 +3851,7 @@ void SetNominalValueNuisancePara()
    return;
 }
 
-void SetAllStatErrorToSigma(double Nsigma)
+void LimitCrossChecker::SetAllStatErrorToSigma(double Nsigma)
 {
 
    TIterator * it  = mc->GetNuisanceParameters()->createIterator();
@@ -3922,7 +3869,7 @@ void SetAllStatErrorToSigma(double Nsigma)
    return;
 }
 
-void SetAllNuisanceParaToSigma(double Nsigma)
+void LimitCrossChecker::SetAllNuisanceParaToSigma(double Nsigma)
 {
 
    TIterator * it  = mc->GetNuisanceParameters()->createIterator();
@@ -3946,7 +3893,7 @@ void SetAllNuisanceParaToSigma(double Nsigma)
    return;
 }
 
-void SetNuisanceParaToSigma(RooRealVar *var, double Nsigma)
+void LimitCrossChecker::SetNuisanceParaToSigma(RooRealVar *var, double Nsigma)
 {
 
    string varname = (string)var->GetName();
@@ -3961,14 +3908,14 @@ void SetNuisanceParaToSigma(RooRealVar *var, double Nsigma)
    return;
 }
 
-void SetPOI(double mu)
+void LimitCrossChecker::SetPOI(double mu)
 {
    RooRealVar *firstPOI = dynamic_cast<RooRealVar *>(mc->GetParametersOfInterest()->first());
    firstPOI->setVal(mu);
    return;
 }
 
-bool IsSimultaneousPdfOK()
+bool LimitCrossChecker::IsSimultaneousPdfOK()
 {
 
    bool IsOK = true;
@@ -3983,7 +3930,7 @@ bool IsSimultaneousPdfOK()
    return IsOK;
 }
 
-bool IsChannelNameOK()
+bool LimitCrossChecker::IsChannelNameOK()
 {
 
    bool IsOK = true;
@@ -4009,7 +3956,7 @@ bool IsChannelNameOK()
    return IsOK;
 }
 
-void PrintModelObservables()
+void LimitCrossChecker::PrintModelObservables()
 {
 
    RooArgSet *AllObservables = (RooArgSet *)mc->GetObservables();
@@ -4023,7 +3970,7 @@ void PrintModelObservables()
    return;
 }
 
-void PrintNuisanceParameters()
+void LimitCrossChecker::PrintNuisanceParameters()
 {
 
    RooArgSet   nuis = *mc->GetNuisanceParameters();
@@ -4039,7 +3986,7 @@ void PrintNuisanceParameters()
    return;
 }
 
-void PrintAllParametersAndValues(RooArgSet para)
+void LimitCrossChecker::PrintAllParametersAndValues(RooArgSet para)
 {
    TIterator * itr = para.createIterator();
    RooRealVar *arg;
@@ -4053,7 +4000,7 @@ void PrintAllParametersAndValues(RooArgSet para)
    return;
 }
 
-void PrintSubChannels()
+void LimitCrossChecker::PrintSubChannels()
 {
 
    RooMsgService::instance().setGlobalKillBelow(ERROR);
@@ -4084,7 +4031,7 @@ void PrintSubChannels()
    return;
 }
 
-TH1F *MakeHist(TString name, RooCurve *curve)
+TH1F *LimitCrossChecker::MakeHist(TString name, RooCurve *curve)
 {
    int nbin = (curve->GetN() - 4) / 2;
    cout << "Create histogram of " << nbin << " bins from " << curve->GetX()[1] << " to "
@@ -4112,7 +4059,7 @@ TH1F *MakeHist(TString name, RooCurve *curve)
 } // MakeHist
 
 // thanks desy
-void FillGraphIntoHisto(TGraph *pGraph, TH1F *pHisto)
+void LimitCrossChecker::FillGraphIntoHisto(TGraph *pGraph, TH1F *pHisto)
 {
    // takes data from a graph and fills it into a pre-binned histogram
    for (Int_t k = 0; k < pHisto->GetNbinsX(); k++) {
@@ -4134,7 +4081,7 @@ void FillGraphIntoHisto(TGraph *pGraph, TH1F *pHisto)
    }
 }
 
-TH1F *ConvertGraphToHisto(TGraph *pGraph)
+TH1F *LimitCrossChecker::ConvertGraphToHisto(TGraph *pGraph)
 {
    // takes data from a graph, determines binning and fills data into histogram
    Int_t    NPoints = pGraph->GetN();
@@ -4173,7 +4120,7 @@ TH1F *ConvertGraphToHisto(TGraph *pGraph)
    return ThisHist;
 }
 
-void PrintNumberOfEvents(RooAbsPdf *pdf)
+void LimitCrossChecker::PrintNumberOfEvents(RooAbsPdf *pdf)
 {
 
    RooRealVar *firstPOI = (RooRealVar *)mc->GetParametersOfInterest()->first();
@@ -4242,7 +4189,7 @@ void PrintNumberOfEvents(RooAbsPdf *pdf)
    return;
 }
 
-void FindConstants(RooAbsPdf *pdf)
+void LimitCrossChecker::FindConstants(RooAbsPdf *pdf)
 {
    cout << "Looking for constant parameters in " << pdf->GetName() << endl;
    cout << "The following will be set to constant " << endl;
@@ -4280,14 +4227,14 @@ void FindConstants(RooAbsPdf *pdf)
    return;
 }
 
-void SetStyle()
+void LimitCrossChecker::SetStyle()
 {
    gStyle->SetOptStat(0);
 
    return;
 }
 
-void LegendStyle(TLegend *l)
+void LimitCrossChecker::LegendStyle(TLegend *l)
 {
    l->SetBorderSize(0);
    l->SetFillColor(0);
@@ -4298,8 +4245,8 @@ void LegendStyle(TLegend *l)
    return;
 }
 
-void Initialize(const char *infile, const char *outputdir, const char *workspaceName, const char *modelConfigName,
-                const char *ObsDataName)
+void LimitCrossChecker::Initialize(const char *infile, const char *outputdir, const char *workspaceName,
+                                   const char *modelConfigName, const char *ObsDataName)
 {
 
    // Cosmetics
@@ -4387,7 +4334,7 @@ void Initialize(const char *infile, const char *outputdir, const char *workspace
    */
 }
 
-void Finalize(const char *infile)
+void LimitCrossChecker::Finalize(const char *infile)
 {
    if (writePostfitAsimData) {
       w->loadSnapshot("snapshot_paramsVals_initial");
@@ -4398,7 +4345,7 @@ void Finalize(const char *infile)
    PrintSuspiciousNPs();
 }
 
-RooArgList getFloatParList(const RooAbsPdf &pdf, const RooArgSet &obsSet)
+RooArgList LimitCrossChecker::getFloatParList(const RooAbsPdf &pdf, const RooArgSet &obsSet)
 {
    RooArgList floatParList;
 
@@ -4419,41 +4366,28 @@ RooArgList getFloatParList(const RooAbsPdf &pdf, const RooArgSet &obsSet)
    return floatParList;
 }
 
-} // namespace LimitCrossCheck
-
 //============================================================
 // ================= Executable function =====================
 //============================================================
 
-enum Algs {
-   PlotHistosBeforeFit = 0,
-   PlotMorphingControlPlots,
-   PlotHistosAfterFitEachSubChannel,
-   PlotHistosAfterFitGlobal,
-   PlotsNuisanceParametersVSmu,
-   PlotsStatisticalTest,
-   FitToAsimov
-};
-
-void FitCrossCheckForLimits(const Algs algorithm = PlotHistosBeforeFit, float mu = 0, float sigma = 1,
-                            bool IsConditional = true, const char *infile = "WorkspaceForTest1.root",
-                            const char *outputdir = "./results/", const char *workspaceName = "combined",
-                            const char *modelConfigName = "ModelConfig", const char *ObsDataName = "obsData",
-                            bool draw1DResponse = false, bool createPostfitAsimov = false)
+void LimitCrossChecker::FitCrossCheckForLimits(const Algs algorithm, float mu, float sigma, bool IsConditional,
+                                               const char *infile, const char *outputdir, const char *workspaceName,
+                                               const char *modelConfigName, const char *ObsDataName,
+                                               bool draw1DResponse, bool createPostfitAsimov)
 {
 
-   LimitCrossCheck::writePostfitAsimData = createPostfitAsimov;
-   LimitCrossCheck::Initialize(infile, outputdir, workspaceName, modelConfigName, ObsDataName);
+   this->writePostfitAsimData = createPostfitAsimov;
+   this->Initialize(infile, outputdir, workspaceName, modelConfigName, ObsDataName);
 
    // set number of toys per job
    int nToys = 20;
 
    // enable NLL scan plots (does not make sense for all algorithms)
-   LimitCrossCheck::draw1DResponse = draw1DResponse;
+   this->draw1DResponse = draw1DResponse;
 
    // determine job id to set random seed for toys and parallel processing of toys / NLL scans
-   LimitCrossCheck::nJobs = 1;
-   LimitCrossCheck::iJob  = 0;
+   this->nJobs = 1;
+   this->iJob  = 0;
    TPRegexp   pat(".*_job(\\d+)of(\\d+).*");
    TObjArray *res = pat.MatchS(infile);
    if (res->GetSize() >= 3) {
@@ -4461,58 +4395,58 @@ void FitCrossCheckForLimits(const Algs algorithm = PlotHistosBeforeFit, float mu
          int nJobsTmp = atoi(((TObjString *)(res->At(2)))->GetString());
          int iJobTmp  = atoi(((TObjString *)(res->At(1)))->GetString());
          if (nJobsTmp > 0 && iJobTmp >= 0 && iJobTmp < nJobsTmp) {
-            LimitCrossCheck::nJobs = nJobsTmp;
-            LimitCrossCheck::iJob  = iJobTmp;
+            this->nJobs = nJobsTmp;
+            this->iJob  = iJobTmp;
          }
       }
    }
-   cout << "Running job " << LimitCrossCheck::iJob << " of " << LimitCrossCheck::nJobs << endl;
+   cout << "Running job " << this->iJob << " of " << this->nJobs << endl;
 
    switch (algorithm) {
    // -----------------------------------------------------------------------------------
    // - Plot nominal and +/- Nsigma (for each nuisance paramater) for Data, signal+bkg
    // -----------------------------------------------------------------------------------
-   case PlotHistosBeforeFit:
-      LimitCrossCheck::PlotHistosBeforeFit(sigma, mu); // (nSigma,mu)
+   case Algs::PlotHistosBeforeFit:
+      this->PlotHistosBeforeFit(sigma, mu); // (nSigma,mu)
       break;
 
    // -----------------------------------------------------------------------------------
    // - Control plots for morphing (ie, -1/0/+1 sigma --> continuous NP)
    // -----------------------------------------------------------------------------------
-   case PlotMorphingControlPlots: LimitCrossCheck::PlotMorphingControlPlots(); break;
+   case Algs::PlotMorphingControlPlots: this->PlotMorphingControlPlots(); break;
 
    // ----------------------------------------------------------------------------------
    // - Plot histograms after unconditional fit (theta and mu fitted at the same time)
    // - Or
    // - Plot the unconditionnal fitted nuisance paramters value (theta fitted while mu is fixed)
    // ----------------------------------------------------------------------------------
-   case PlotHistosAfterFitEachSubChannel: LimitCrossCheck::PlotHistosAfterFitEachSubChannel(IsConditional, mu); break;
-   case PlotHistosAfterFitGlobal: LimitCrossCheck::PlotHistosAfterFitGlobal(IsConditional, mu, false); break;
+   case Algs::PlotHistosAfterFitEachSubChannel: this->PlotHistosAfterFitEachSubChannel(IsConditional, mu); break;
+   case Algs::PlotHistosAfterFitGlobal: this->PlotHistosAfterFitGlobal(IsConditional, mu, false); break;
 
    // -------------------------------------------
    // - Plot the nuisance parameters versus mu
    // -------------------------------------------
-   case PlotsNuisanceParametersVSmu: LimitCrossCheck::PlotsNuisanceParametersVSmu(); break;
+   case Algs::PlotsNuisanceParametersVSmu: this->PlotsNuisanceParametersVSmu(); break;
 
    // -------------------------------------------
    // - Plot the pulls and stat test from toys
    // -------------------------------------------
-   case PlotsStatisticalTest:
+   case Algs::PlotsStatisticalTest:
       // For this algorithm mu is the mu used for pseudo-data
       // sigma is the hypothetized mu for the statistical tests
-      LimitCrossCheck::PlotsStatisticalTest(mu, sigma, nToys, LimitCrossCheck::iJob + 1000 * LimitCrossCheck::nJobs);
+      this->PlotsStatisticalTest(mu, sigma, nToys, this->iJob + 1000 * this->nJobs);
       break;
 
    // -------------------------------------------
    // - Do a global fit to the asimov dataset
    // -------------------------------------------
-   case FitToAsimov:
+   case Algs::FitToAsimov:
       // For this algorithm mu is the mu used for pseudo-data, and the fitting if IsConditional is true
-      LimitCrossCheck::PlotHistosAfterFitGlobal(IsConditional, mu, true);
+      this->PlotHistosAfterFitGlobal(IsConditional, mu, true);
       break;
 
    default: cout << "FitCrossChecksForLimits:: ERROR: unknown Algorithm requested" << endl; break;
    }
-   LimitCrossCheck::Finalize(infile);
+   this->Finalize(infile);
    return;
 }
