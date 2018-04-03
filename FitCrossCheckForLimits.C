@@ -95,7 +95,7 @@ Updates:
 #include "RooStats/AsymptoticCalculator.h"
 
 // macros
-#include "macros/makeAsimovData.C"
+#include "AsimovDataMaking.h"
 
 using namespace std;
 using namespace RooFit;
@@ -2013,8 +2013,11 @@ void PlotHistosAfterFitGlobal(bool IsConditionnal, double mu, bool isAsimov)
    RooArgList       floatPars = getFloatParList(*simPdf, *obsSet);
    // create an Asimov dataset using the fitted parameters
    if (writePostfitAsimData) {
-      RooAbsData *postfit_asimov_data = makeAsimovData(mc, 0, w, mc->GetPdf(), (RooDataSet *)localData,
-                                                       firstPOI->getVal()); // no fit and build asimov with mu=mu_asimov
+    //RooAbsData *postfit_asimov_data = EXOSTATS::makeAsimovData(mc, 0, w, mc->GetPdf(), (RooDataSet *)localData,
+    //                                                 firstPOI->getVal()); // no fit and build asimov with mu=mu_asimov
+      RooArgSet nuiSet_tmp(*mc->GetNuisanceParameters()); // VI: should in principle do the unfolding within AsimovDataMaking.C?
+      auto nll = dynamic_cast<RooNLLVar*>(mc->GetPdf()->createNLL(*localData, RooFit::Constrain(nuiSet_tmp)));
+      RooAbsData *postfit_asimov_data = EXOSTATS::makeAsimovData(w, mc->GetName(), kFALSE, nll, firstPOI->getVal()); // no fit and build asimov with mu=mu_asimov
       TString     asimName("asimovData_paramsVals_" + globOrAsim + "Fit");
       if (IsConditionnal) {
          asimName.Append("_mu" + TString(Form("%4.2f", mu)));
