@@ -23,7 +23,7 @@ add_definitions(${ROOT_CXX_FLAGS})
 ROOT_GENERATE_DICTIONARY(G__ExoStats RooExpandedFitResult.h LINKDEF LinkDef.h)
 
 #---Create a shared library with geneated dictionary
-add_library(ExoStats SHARED Minimization.C AsimovDataMaking.C AsymptoticsCLsRunner.C HistFactoryInspector.C RooExpandedFitResult.C G__ExoStats.cxx)
+add_library(ExoStats SHARED Minimization.C AsimovDataMaking.C AsymptoticsCLsRunner.C HistFactoryInspector.C RooExpandedFitResult.C FitCrossCheckForLimits.C G__ExoStats.cxx)
 target_link_libraries(ExoStats ${ROOT_LIBRARIES})
 
 #---Create  a main program using the library
