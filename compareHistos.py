@@ -25,6 +25,8 @@ def getDirectoryReport(a):
   return report
 
 def compareValues(name, val_a, val_b, tolerance=0):
+  if val_b == 0:
+    return '%s: %.3f vs %.3f' % (name, val_a, val_b)
   if abs(val_a/val_b-1) > tolerance:
     return '%s: %.3f vs %.3f (%0.2f%%)' % (name, val_a, val_b, (val_b/val_a-1.)*100.)
   else:
