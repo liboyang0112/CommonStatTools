@@ -21,7 +21,7 @@ lsetup git
 lsetup ROOT
 lsetup cmake
 git clone --recurse-submodules https://:@gitlab.cern.ch:8443/atlas-phys/exot/CommonStatTools.git
-cd exostats
+cd CommonStatTools
 mkdir build
 cd build 
 cmake ..
@@ -35,11 +35,11 @@ If your workspace was not generated via HistFactory, some of the tools won't of 
 
 To include this package in your macros, you can also simply do something like:
 ```
-#include "exostats/Minimization.h"
+#include "CommonStatTools/Minimization.h"
 
-R__LOAD_LIBRARY(exostats/build/libExoStats.so)
-//R__LOAD_LIBRARY(exostats/build/libExoStats.dylib) // on macOS
-// R__LOAD_LIBRARY(exostats/Minimization.C+) // uncomment this if you did not run cmake+make for some reason
+R__LOAD_LIBRARY(CommonStatTools/build/libExoStats.so)
+//R__LOAD_LIBRARY(CommonStatTools/build/libExoStats.dylib) // on macOS
+// R__LOAD_LIBRARY(CommonStatTools/Minimization.C+) // uncomment this if you did not run cmake+make for some reason
 
 void test() {
 

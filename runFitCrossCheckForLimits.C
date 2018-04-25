@@ -6,7 +6,7 @@
 R__LOAD_LIBRARY(Minimization.C+)
 R__LOAD_LIBRARY(AsimovDataMaking.C+)
 R__LOAD_LIBRARY(FitCrossCheckForLimits.C+)
-//R__LOAD_LIBRARY(exostats/build/libExoStats.so)
+//R__LOAD_LIBRARY(CommonStatTools/build/libExoStats.so)
 
 /// Runs the LimitCrossChecker class over a workspace
 ///

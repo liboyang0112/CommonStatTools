@@ -18,7 +18,7 @@
 #include "Minimization.h"
 
 R__LOAD_LIBRARY(Minimization.C+)
-//R__LOAD_LIBRARY(exostats/build/libExoStats.so)
+//R__LOAD_LIBRARY(CommonStatTools/build/libExoStats.so)
 
 /// Saves the fit correlation matrix to file
 /// \param[in] inputFile name of the input file

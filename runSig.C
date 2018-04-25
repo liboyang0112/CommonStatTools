@@ -40,7 +40,7 @@ to choose which mu value to profile observed data at before generating expected
 
 R__LOAD_LIBRARY(Minimization.C+)
 R__LOAD_LIBRARY(AsimovDataMaking.C+)
-//R__LOAD_LIBRARY(exostats/build/libExoStats.so)
+//R__LOAD_LIBRARY(CommonStatTools/build/libExoStats.so)
 
 using namespace std;
 using namespace RooFit;
