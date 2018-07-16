@@ -420,10 +420,6 @@ RooFormulaVar *EXOSTATS::HistFactoryInspector::retrieveYieldRFV(TString region, 
 
    RooAbsPdf *regPdf = m_simPdf->getPdf(region);
 
-   RooAbsData *simData = m_w->data(m_dataName);
-   RooAbsData *regData =
-      simData->reduce(TString::Format("%s==%s::%s", m_cat->GetName(), m_cat->GetName(), region.Data()));
-
    RooRealVar *obs =
       dynamic_cast<RooRealVar *>(m_mc->GetObservables()->find("obs_x_" + region)); // name hardcoded in HistFactory
    RooRealVar *binWidth = dynamic_cast<RooRealVar *>(

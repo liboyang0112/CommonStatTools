@@ -1661,7 +1661,6 @@ void LimitCrossChecker::PlotHistosAfterFitEachSubChannel(bool IsConditionnal, do
       icolor = 0;
       while ((comp2 = (RooProduct *)funcIter2.Next())) {
          ibkg++;
-         int     color = kGray;
          TString compname(comp2->GetName());
          compname.ReplaceAll("L_x_", "");
          compname.ReplaceAll(tt->GetName(), "");
@@ -1672,42 +1671,6 @@ void LimitCrossChecker::PlotHistosAfterFitEachSubChannel(bool IsConditionnal, do
          double Ntemp = (comp2->createIntegral(*obs))->getVal() * binWidth->getVal();
          if (Ntemp != 0) {
             icolor++;
-            if (icolor == 1) {
-               color = kOrange - 3;
-            } else if (icolor == 2) {
-               color = kCyan + 1;
-            } else if (icolor == 3) {
-               color = kGreen - 9;
-            } else if (icolor == 4) {
-               color = kAzure - 9;
-            } else if (icolor == 5) {
-               color = kOrange + 10;
-            } else if (icolor == 6) {
-               color = kGreen - 6;
-            } else if (icolor == 7) {
-               color = kAzure - 4;
-            } else if (icolor == 8) {
-               color = kOrange + 6;
-            } else if (icolor == 9) {
-               color = kGreen + 1;
-            } else if (icolor == 10) {
-               color = kAzure + 2;
-            } else if (icolor == 11) {
-               color = kOrange;
-            } else if (icolor == 12) {
-               color = kGreen + 3;
-            } else if (icolor == 13) {
-               color = kAzure - 4;
-            } else if (icolor == 14) {
-               color = kOrange;
-            } else if (icolor == 15) {
-               color = kGreen + 1;
-            } else if (icolor == 16) {
-               color = kOrange - 7;
-            } else if (icolor == 17) {
-               color = kPink + 1;
-            } else
-               color = icolor;
             // i//pdfmodel2->plotOn(frame,LineWidth(0),Components(*comp2),LineColor(0), LineStyle(3),
             // Normalization(Ntemp,RooAbsReal::NumEvent),Name("NoStacked_BkgBeforeFit_"+compname));
          }
@@ -2714,7 +2677,6 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
       // icolor=0;
       while ((comp2 = (RooProduct *)funcIter2.Next())) {
          ibkg++;
-         int     color = kGray;
          TString compname(comp2->GetName());
          compname.ReplaceAll("L_x_", "");
          compname.ReplaceAll(tt->GetName(), "");
@@ -2743,49 +2705,6 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
          //        else if(icolor==16) { color = kOrange - 7; }
          //        else if(icolor==17) { color = kPink + 1; }
          //        else   color=icolor;
-
-         color = kBlack;
-         if (compname.Contains("DibosonSign")) {
-            color = kRed;
-         } else if (compname.Contains("WH")) {
-            color = kRed;
-         } else if (compname.Contains("ZH")) {
-            color = kRed;
-         } else if (compname.Contains("Diboson")) {
-            color = kOrange - 3;
-         } else if (compname.Contains("WW")) {
-            color = kOrange + 7;
-         } else if (compname.Contains("WZ")) {
-            color = kOrange + 10;
-         } else if (compname.Contains("ZZ")) {
-            color = kOrange + 6;
-         } else if (compname.Contains("Top")) {
-            color = kOrange;
-         } else if (compname.Contains("ttbar")) {
-            color = kOrange;
-         } else if (compname.Contains("stop")) {
-            color = kOrange - 7;
-         } else if (compname.Contains("Wl")) {
-            color = kGreen - 9;
-         } else if (compname.Contains("Wc")) {
-            color = kGreen - 6;
-         } else if (compname.Contains("Wcc")) {
-            color = kGreen + 1;
-         } else if (compname.Contains("Wb")) {
-            color = kGreen + 3;
-         } else if (compname.Contains("W")) {
-            color = kGreen + 1;
-         } else if (compname.Contains("Zl")) {
-            color = kAzure - 9;
-         } else if (compname.Contains("Zc")) {
-            color = kAzure - 4;
-         } else if (compname.Contains("Zb")) {
-            color = kAzure + 2;
-         } else if (compname.Contains("Z")) {
-            color = kAzure - 4;
-         } else if (compname.Contains("multijet")) {
-            color = kPink + 1;
-         }
 
          double Ntemp = (comp2->createIntegral(*obs))->getVal() * binWidth->getVal();
          preFits[compname] += Ntemp;
@@ -3014,7 +2933,7 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
    gROOT->cd();
 
    return;
-}; // PlotHistosAfterFitGlobal
+} // PlotHistosAfterFitGlobal
 
 void LimitCrossChecker::Plot1DResponse(RooAbsReal *nll, RooRealVar *var, TString cname, TCanvas *can, TF1 *poly,
                                        bool IsFloating, TLatex *latex, TDirectory *tdir, RooArgSet *SliceSet)
@@ -4085,7 +4004,7 @@ TH1F *LimitCrossChecker::ConvertGraphToHisto(TGraph *pGraph)
 {
    // takes data from a graph, determines binning and fills data into histogram
    Int_t    NPoints = pGraph->GetN();
-   Double_t BinLimits[NPoints + 1];
+   Double_t *BinLimits = new Double_t(NPoints + 1);
    // sort graph
    pGraph->Sort();
    // determine lower limit of histogram: half the distance to next point
