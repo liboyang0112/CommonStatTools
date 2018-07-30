@@ -13,6 +13,8 @@ to choose which mu value to profile observed data at before generating expected
 
 */
 
+#include "runSig.h"
+
 #include <RooWorkspace.h>
 #include <RooStats/ModelConfig.h>
 #include <RooDataSet.h>
@@ -25,14 +27,15 @@ to choose which mu value to profile observed data at before generating expected
 #include <Math/MinimizerOptions.h>
 #include <RooMinimizer.h>
 
-#include <TH1D.h>
-
 #include <TStopwatch.h>
 
 #include "Minimization.h"
 #include "AsimovDataMaking.h"
 
 #include <TFile.h>
+#include <TTree.h>
+#include <TMath.h>
+#include <TH1D.h>
 
 #include <iostream>
 #include <iomanip>
@@ -89,8 +92,8 @@ using namespace RooStats;
 /// is to \c hadd all output files, so that the resulting TTree contains one entry per mass point.
 void runSig(const char *inputFile, const char *workspaceName, const char *modelConfigName, const char *dataName,
             TString paramName, Float_t paramValue, TString workspaceTag, TString outputFolder, Bool_t keepDataBlind,
-            const char *asimovDataName = "asimovData_1", const char *conditionalSnapshot = "conditionalGlobs_1",
-            const char *nominalSnapshot = "nominalGlobs", Bool_t doInjection = kFALSE, Float_t muInjection = 1, Int_t debugLevel = 2)
+            const char *asimovDataName, const char *conditionalSnapshot,
+            const char *nominalSnapshot, Bool_t doInjection, Float_t muInjection, Int_t debugLevel)
 
 {
    const UInt_t nCPU             = 3; // number of CPUs to be used in the fit
