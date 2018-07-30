@@ -18,7 +18,7 @@
 #include <iostream>
 using namespace std;
 
-ClassImp(RooExpandedFitResult);
+ClassImp(RooExpandedFitResult)
 
 //_______________________________________________________________________________________
 RooExpandedFitResult::RooExpandedFitResult(RooFitResult *origResult, RooArgList extraPars)

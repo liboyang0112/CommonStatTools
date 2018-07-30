@@ -326,8 +326,6 @@ TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, con
       RooDataSet *asimovData_inj = EXOSTATS::makeAsimovData(m_w, modelConfigName, m_conditionalExpected, m_obs_nll, 0,
                                                             nullptr, nullptr, -999, true, m_muInjection);
 
-      int asimovinj_status = m_global_status;
-
       RooNLLVar *asimov_inj_nll       = createNLL(asimovData_inj); //(RooNLLVar*)pdf->createNLL(*asimovData_0);
       m_map_snapshots[asimov_inj_nll] = "conditionalGlobs_0";
       m_map_data_nll[asimovData_inj]  = asimov_inj_nll;
@@ -471,12 +469,10 @@ TTree *EXOSTATS::AsymptoticsCLsRunner::computeLimit(RooWorkspace *workspace, con
    cout << endl;
 
    // Pvalues
-   double med_sig  = -1;
    double med_CLb  = -1;
    double med_CLsb = -1;
    double med_CLs  = -1;
 
-   double obs_sig  = -1;
    double obs_CLb  = -1;
    double obs_CLsb = -1;
    double obs_CLs  = -1;
