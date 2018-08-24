@@ -96,7 +96,7 @@ void runSig(const char *inputFile, const char *workspaceName, const char *modelC
             const char *nominalSnapshot, Bool_t doInjection, Float_t muInjection, Int_t debugLevel)
 
 {
-   const UInt_t nCPU             = 3; // number of CPUs to be used in the fit
+   const UInt_t nCPU             = 1; // number of CPUs to be used in the fit
    const double       mu_profile_value = 1; // mu value to profile the obs data at before generating the expected
    const bool         doConditional    = 1 && !keepDataBlind; // do conditional expected data
    const bool         doUncap          = 1;                   // uncap p0
@@ -174,7 +174,7 @@ void runSig(const char *inputFile, const char *workspaceName, const char *modelC
 
    RooArgSet  nuis_tmp1 = *mc->GetNuisanceParameters();
    RooNLLVar *asimov_nll =
-      (RooNLLVar *)pdf->createNLL(*asimovData1, Constrain(nuis_tmp1), Offset(1), Optimize(2), NumCPU(nCPU, 3));
+      (RooNLLVar *)pdf->createNLL(*asimovData1, Constrain(nuis_tmp1), Offset(1), Optimize(2), NumCPU(nCPU, 1));
 
    // do asimov
    mu->setVal(1);
@@ -276,7 +276,7 @@ void runSig(const char *inputFile, const char *workspaceName, const char *modelC
       string globObsSnapName = "conditionalGlobs" + mu_prof_str;
       ws->loadSnapshot(globObsSnapName.c_str());
       RooNLLVar *inj_nll =
-         (RooNLLVar *)pdf->createNLL(*injData1, Constrain(nuis_tmp2), Offset(1), Optimize(2), NumCPU(nCPU, 3));
+         (RooNLLVar *)pdf->createNLL(*injData1, Constrain(nuis_tmp2), Offset(1), Optimize(2), NumCPU(nCPU, 1));
 
       ws->loadSnapshot("conditionalNuis_0");
       mu->setVal(0);
