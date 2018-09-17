@@ -61,7 +61,7 @@ using namespace RooStats;
 /// \param[in] outputFolder path under which the output ROOT file will be stored; it will be created if it does not exist
 /// \param[in] keepDataBlind if true, data are not used (blind analysis)
 /// \param[in] asimovDataName name of the Asimov dataset to be used; if empty, will be created
-/// \param[in] conditionalSnapshot name of the conditional snapshot 
+/// \param[in] conditionalSnapshot name of the conditional snapshot
 /// \param[in] nominalSnapshot name of the nominal nuisance parameter snapshot
 /// \param[in] doInjection compute the limit after signal injection
 /// \param[in] muInjection value of the parameter of interest to be used for injection
@@ -101,7 +101,7 @@ void runSig(const char *inputFile, const char *workspaceName, const char *modelC
    const bool         doConditional    = 1 && !keepDataBlind; // do conditional expected data
    const bool         doUncap          = 1;                   // uncap p0
    const bool         doInj            = doInjection; // setup the poi for injection study (zero is faster if you're not)
-   const bool         muInj            = muInjection; // injection value for mu (if injection is requested)
+   const double       muInj            = muInjection; // injection value for mu (if injection is requested)
    const bool         doObs            = 1 && !keepDataBlind; // compute median significance
    const bool         doMedian         = 1;                   // compute observed significance
 
@@ -160,7 +160,7 @@ void runSig(const char *inputFile, const char *workspaceName, const char *modelC
       cout << "Asimov data doesn't exist! Please, allow me to build one for you..." << endl;
       string mu_str, mu_prof_str;
       asimovData1  = EXOSTATS::makeAsimovData(ws, mc->GetName(), doConditional, obs_nll, 1, &mu_str, &mu_prof_str,
-                                             mu_profile_value, true);
+                                              mu_profile_value, true);
       condSnapshot = "conditionalGlobs" + mu_prof_str;
    }
 
@@ -269,7 +269,7 @@ void runSig(const char *inputFile, const char *workspaceName, const char *modelC
       if (ws->var("ATLAS_norm_muInjection")) {
          mu_inj = ws->var("ATLAS_norm_muInjection")->getVal();
       } else {
-         mu_inj = mu_init; // for the mass point at the inj
+         mu_inj = muInj; // for the mass point at the inj
       }
       RooDataSet *injData1 =
          EXOSTATS::makeAsimovData(ws, mc->GetName(), doConditional, obs_nll, 0, &mu_str, &mu_prof_str, 1, true, mu_inj, debugLevel);
