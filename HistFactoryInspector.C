@@ -598,7 +598,7 @@ pair<Double_t, Double_t> EXOSTATS::HistFactoryInspector::getYieldUpDown(TString 
    // that's why nom/up/down values of the NP are calculated now...
    const Double_t par_nom  = var->getVal();
    const Double_t par_up   = par_nom + ((useErrorVar) ? var->getErrorHi() : 1);
-   const Double_t par_down = par_nom + ((useErrorVar) ? var->getErrorLo() : 1);
+   const Double_t par_down = par_nom + ((useErrorVar) ? var->getErrorLo() : -1);
 
    // fit only if requested
    var->setVal(par_up);
@@ -615,7 +615,8 @@ pair<Double_t, Double_t> EXOSTATS::HistFactoryInspector::getYieldUpDown(TString 
    }
    result.second = yield->getVal();
 
-   // restore constantness
+   // restore original value and constantness
+   var->setVal(par_nom);
    var->setConstant(wasConstant);
 
    return result;
