@@ -1,8 +1,18 @@
 stages:
   - compile
+  
+variables:
+  GIT_STRATEGY: fetch
+  GIT_SUBMODULE_STRATEGY: recursive
+
+before_script:
+  - source /home/atlas/release_setup.sh
+  - export MAKEFLAGS="-j`nproc` -l`nproc`"
 
 .analysis_image: &image
   image: atlas/slc6-atlasos
+  tags:
+    - cvmfs
   script:
     - echo $SERVICE_PASS | kinit $CERN_USER
 
