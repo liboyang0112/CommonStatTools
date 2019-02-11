@@ -10,7 +10,7 @@ before_script:
   - export MAKEFLAGS="-j`nproc` -l`nproc`"
 
 .analysis_image: &image
-  image: atlas/slc6-atlasos
+  image: atlas/analysisbase:latest
   tags:
     - cvmfs
   script:
@@ -20,8 +20,9 @@ compile_core:
   stage: compile
   <<: *image
   script:
-    - echo $PWD
-    - setupATLAS
+    - pwd
+    - ls *
+    - source /home/atlas/release_setup.sh
     - lsetup git
     - lsetup "root 6.14.04-x86_64-slc6-gcc62-opt
     - lsetup cmake
