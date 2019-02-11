@@ -6,7 +6,8 @@ stages:
   script:
     - echo $SERVICE_PASS | kinit $CERN_USER
 
-compile:
+compile_core:
+  stage: compile
   <<: *image
   script:
     - echo $PWD
