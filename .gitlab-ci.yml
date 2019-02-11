@@ -7,8 +7,7 @@ variables:
 
 before_script:
   - export ATLAS_LOCAL_ROOT_BASE=/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
-  - alias setupATLAS='source ${ATLAS_LOCAL_ROOT_BASE}/user/atlasLocalSetup.sh'
-  - setupATLAS
+  - source ${ATLAS_LOCAL_ROOT_BASE}/user/atlasLocalSetup.sh
   - export MAKEFLAGS="-j`nproc` -l`nproc`"
 
 .analysis_image: &image
