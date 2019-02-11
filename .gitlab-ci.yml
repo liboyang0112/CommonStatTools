@@ -6,7 +6,9 @@ variables:
 #  GIT_SUBMODULE_STRATEGY: recursive
 
 before_script:
-  - source /cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/user/atlasLocalSetup.sh
+  - export ATLAS_LOCAL_ROOT_BASE=/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
+  - alias setupATLAS='source ${ATLAS_LOCAL_ROOT_BASE}/user/atlasLocalSetup.sh'
+  - setupATLAS
   - export MAKEFLAGS="-j`nproc` -l`nproc`"
 
 .analysis_image: &image
