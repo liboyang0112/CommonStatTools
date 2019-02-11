@@ -24,7 +24,7 @@ compile_core:
     - pwd
     - ls *
     - lsetup git || true
-    - lsetup "root 6.14.04-x86_64-slc6-gcc62-opt || true
+    - lsetup "root 6.14.04-x86_64-slc6-gcc62-opt" || true
     - lsetup cmake || true
     - mkdir build
     - cd build 
