@@ -6,7 +6,7 @@ variables:
 #  GIT_SUBMODULE_STRATEGY: recursive
 
 before_script:
-  - source /home/atlas/release_setup.sh
+  - source /cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/user/atlasLocalSetup.sh
   - export MAKEFLAGS="-j`nproc` -l`nproc`"
 
 .analysis_image: &image
@@ -22,7 +22,6 @@ compile_core:
   script:
     - pwd
     - ls *
-    - source /home/atlas/release_setup.sh
     - lsetup git
     - lsetup "root 6.14.04-x86_64-slc6-gcc62-opt
     - lsetup cmake
