@@ -2380,20 +2380,26 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
       RooArgList        funcList = pdfmodel->funcList();
       RooProduct *      comp     = 0;
       RooLinkedListIter funcIter = funcList.iterator();
+      double Ntemp = 0;
+      double postFitSum = 0;
       cout << "Post Fit " << endl;
       while ((comp = (RooProduct *)funcIter.Next())) {
-         cout << "\t" << comp->GetName() << "\t" << (comp->createIntegral(*obs))->getVal() * binWidth->getVal() << endl;
+         Ntemp = (comp->createIntegral(*obs))->getVal() * binWidth->getVal();
+         cout << TString::Format("\t%-180s %1.8e", comp->GetName(), Ntemp) << endl;
+         postFitSum += Ntemp;
       }
+      cout << TString::Format("\t%-180s %1.8e", "Post Fit Sum (sum of components listed above):", postFitSum) << endl;
+      float postFitIntegral = pdftmp->expectedEvents(*obs);
+      cout << TString::Format("\t%-180s %1.8e", "Post Fit Integral (pdftmp->expectedEvents(*obs)):", postFitIntegral) << endl;
 
       cname = "can_DistriAfterFit_" + (TString)tt->GetName() + "_" + globOrAsim + "Fit_" + TS_IsConditionnal + "_mu";
       cname += mu;
       TCanvas *c2        = new TCanvas(cname);
       RooPlot *frame     = obs->frame();
-      TString  FrameName = "Plot_Distri" + globOrAsim + "_" + (TString)IsConditionnal;
+      // TString  FrameName = "Plot_Distri" + globOrAsim + "_" + TS_IsConditionnal;
+      TString  FrameName = "Plot_Distri_" + (TString)tt->GetName() + "_" + globOrAsim + "Fit_" + TS_IsConditionnal + "_mu" + mu;
       frame->SetName(FrameName);
       frame->SetYTitle("EVENTS");
-
-      float postFitIntegral = pdftmp->expectedEvents(*obs);
       pdftmp->plotOn(frame, FillColor(kOrange), LineWidth(2), LineColor(kBlue), VisualizeError(*fitresGlobal, 1),
                      Normalization(postFitIntegral, RooAbsReal::NumEvent), Name("FitError"));
       pdftmp->plotOn(frame, LineWidth(2), Normalization(postFitIntegral, RooAbsReal::NumEvent), Name("CentralFit"));
@@ -2440,10 +2446,10 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
       MainDir->cd();
       c2->Write();
 
-      delete frame;
-
       RooPlot *frm = obs->frame();
-      FrameName    = "Plot_Distri" + globOrAsim + "_" + (TString)IsConditionnal + TString("_stack");
+      // FrameName    = "Plot_Distri" + (TString)tt->GetName() + "_" + globOrAsim + "Fit_" + TS_IsConditionnal + "_mu" + mu + TString("_stack");
+      FrameName    = "Plot_Distri" + globOrAsim + "_" + TS_IsConditionnal + TString("_stack");
+      TCanvas *c3 = new TCanvas(FrameName);
       frm->SetName(FrameName);
       frm->SetYTitle("EVENTS");
 
@@ -2472,11 +2478,8 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
          else
             firstPOI->setVal(mu);
       }
-      int ibkg = 0;
-      // int icolor=0;
       TString previous = "";
       while ((comp1 = (RooProduct *)funcIter1.Next())) {
-         ibkg++;
 
          int color = kGray;
 
@@ -2487,28 +2490,6 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
          compname.ReplaceAll("_overallSyst_x_HistSyst", "");
          compname.ReplaceAll("_overallSyst_x_Exp", "");
          compname.ReplaceAll("_", "");
-
-         /*
-            icolor++;
-            if(icolor==1) { color = kOrange - 3; }
-            else if(icolor==2) { color = kCyan + 1; }
-            else if(icolor==3) { color = kGreen - 9; }
-            else if(icolor==4) { color = kAzure - 9; }
-            else if(icolor==5) { color = kOrange + 10;}
-            else if(icolor==6) { color = kGreen - 6; }
-            else if(icolor==7) { color = kAzure - 4; }
-            else if(icolor==8) { color = kOrange + 6; }
-            else if(icolor==9) { color = kGreen + 1; }
-            else if(icolor==10) { color = kAzure + 2; }
-            else if(icolor==11) { color = kOrange; }
-            else if(icolor==12) { color = kGreen + 3; }
-            else if(icolor==13) { color = kAzure - 4; }
-            else if(icolor==14) { color = kOrange; }
-            else if(icolor==15) { color = kGreen + 1; }
-            else if(icolor==16) { color = kOrange - 7; }
-            else if(icolor==17) { color = kPink + 1; }
-            else   color=icolor;
-            */
 
          color = kBlack;
          if (compname.Contains("DibosonSign")) {
@@ -2551,6 +2532,20 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
             color = kAzure - 4;
          } else if (compname.Contains("multijet")) {
             color = kPink + 1;
+         } else if (compname.Contains("Zhf")) {
+            color = kAzure + 2;
+         } else if (compname.Contains("Whf")) {
+            color = kGreen + 3;
+         } else if (compname.Contains("Zlight")) {
+            color = kAzure + 1;
+         } else if (compname.Contains("Wlight")) {
+            color = kGreen + 2;
+         } else if (compname.Contains("top")) {
+            color = kOrange;
+         } else if (compname.Contains("VV")) {
+            color = kGray + 1;
+         } else if (compname.Contains("VH125")) {
+            color = kGray + 1;
          } else {
             cout << "NO color for  " << compname << endl;
             exit(-1);
@@ -2578,11 +2573,7 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
          postFits[compname] += Ntemp;
          postFitsChan[compname] += Ntemp;
 
-         //        if (ibkg==0) pdfmodel1->plotOn(frame,LineWidth(2),Components(*comp1),LineColor(color),
-         //        Normalization(Ntemp,RooAbsReal::NumEvent),Name("Stacked_"+compname)); else
-         //        pdfmodel1->plotOn(frame,LineWidth(2),Components(*comp1),LineColor(color),
-         //        Normalization(Ntemp,RooAbsReal::NumEvent),Name("Stacked_"+compname),AddTo(previous));
-         if (previous.Length() == 0) {
+         if (previous == "") {
             pdfmodel1->plotOn(frm, LineWidth(2), Components(*comp1), LineColor(color),
                               Normalization(Ntemp, RooAbsReal::NumEvent), FillColor(color), DrawOption("F"),
                               FillStyle(1001), Name("Stacked_" + compname));
@@ -2650,16 +2641,22 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
       }
       TString muValueBeforeFitLegend = Form("Before fit (#mu=%2.2f)", mubeforefit);
       funcIter                       = funcList.iterator();
+      double preFitSum             = 0;
+      Ntemp = 0;
       cout << "Pre Fit " << endl;
       while ((comp = (RooProduct *)funcIter.Next())) {
-         cout << "\t" << comp->GetName() << "\t" << (comp->createIntegral(*obs))->getVal() * binWidth->getVal() << endl;
+         Ntemp = (comp->createIntegral(*obs))->getVal() * binWidth->getVal();
+         cout << TString::Format("\t%-180s %1.8e", comp->GetName(), Ntemp) << endl;
+         preFitSum += Ntemp;
       }
+      cout << TString::Format("\t%-180s %1.8e", "Pre Fit Sum (sum of components listed above):", preFitSum) << endl;
       preFitIntegral = pdftmp->expectedEvents(*obs);
+      cout << TString::Format("\t%-180s %1.8e", "Pre Fit Integral (pdftmp->expectedEvents(*obs)):", preFitIntegral) << endl;
       pdftmp->plotOn(frm, LineWidth(2), Name("BeforeFit"), LineStyle(kDashed),
                      Normalization(preFitIntegral, RooAbsReal::NumEvent));
-      c2->cd();
+      c3->cd();
       frm->Draw();
-      c2->cd();
+      c3->cd();
 
       TString modelName2(tt->GetName());
       modelName2.Append("_model");
@@ -2673,10 +2670,7 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
          else
             firstPOI->setVal(mu);
       }
-      ibkg = 0;
-      // icolor=0;
       while ((comp2 = (RooProduct *)funcIter2.Next())) {
-         ibkg++;
          TString compname(comp2->GetName());
          compname.ReplaceAll("L_x_", "");
          compname.ReplaceAll(tt->GetName(), "");
@@ -2685,26 +2679,6 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
          compname.ReplaceAll("_overallSyst_x_Exp", "");
          compname.ReplaceAll("_", "");
          if (IsConditionnal && firstPOI) firstPOI->setVal(1.0);
-
-         //        icolor++;
-         //        if(icolor==1) { color = kOrange - 3; }
-         //        else if(icolor==2) { color = kCyan + 1; }
-         //        else if(icolor==3) { color = kGreen - 9; }
-         //        else if(icolor==4) { color = kAzure - 9; }
-         //        else if(icolor==5) { color = kOrange + 10;}
-         //        else if(icolor==6) { color = kGreen - 6; }
-         //        else if(icolor==7) { color = kAzure - 4; }
-         //        else if(icolor==8) { color = kOrange + 6; }
-         //        else if(icolor==9) { color = kGreen + 1; }
-         //        else if(icolor==10) { color = kAzure + 2; }
-         //        else if(icolor==11) { color = kOrange; }
-         //        else if(icolor==12) { color = kGreen + 3; }
-         //        else if(icolor==13) { color = kAzure - 4; }
-         //        else if(icolor==14) { color = kOrange; }
-         //        else if(icolor==15) { color = kGreen + 1; }
-         //        else if(icolor==16) { color = kOrange - 7; }
-         //        else if(icolor==17) { color = kPink + 1; }
-         //        else   color=icolor;
 
          double Ntemp = (comp2->createIntegral(*obs))->getVal() * binWidth->getVal();
          preFits[compname] += Ntemp;
@@ -2719,7 +2693,7 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
             firstPOI->setVal(mu);
       }
 
-      c2->cd();
+      c3->cd();
       frm->Draw();
       if (!blind) {
          text.DrawLatex(0.73, 0.81, WritDownMuValue);
@@ -2727,11 +2701,13 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
       TString ts_chi2 = Form("#chi^{2}=%1.1f", chi2);
       text.DrawLatex(0.22, 0.83, ts_chi2);
 
-      TLegend *leg = new TLegend(0.54, 0.40, 0.77, 0.76);
+
+      c3->cd();
+      TLegend *leg = new TLegend(0.6, 0.55, 0.85, 0.85);
       leg->SetBorderSize(0);
       leg->SetFillColor(0);
       leg->SetTextFont(62);
-      leg->SetTextSize(0.050);
+      leg->SetTextSize(0.030);
       for (int i = 0; i < frm->numItems(); i++) {
          TString obj_name = frm->nameOf(i);
          if (obj_name == "" || obj_name.Contains("NotAppears") || obj_name.Contains("NoStacked")) continue;
@@ -2759,26 +2735,25 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
          leg->AddEntry(obj, obj_name, "l");
       }
 
-      // leg->Draw();
-      c2->cd();
       frm->Draw();
+      leg->Draw();
       text.DrawLatex(0.22, 0.83, ts_chi2);
 
       // Save the plots
+      c3->SetName("Plot_Distri_" + (TString)tt->GetName() + "_" + globOrAsim + "Fit_" + TS_IsConditionnal + "_mu" + mu + TString("_stack"));
+      c3->Update();
       MainDir->cd();
-      c2->Write();
+      c3->Write();
       if (drawPlots) {
-         c2->Print(dirName + "/" + c2->GetName() + ".eps");
-         c2->Print(dirName + "/" + c2->GetName() + ".png");
+         c3->Print(dirName + "/" + c3->GetName() + ".pdf");
+         c3->Print(dirName + "/" + c3->GetName() + ".png");
       }
-      c2->Close();
+      c3->Close();
       gROOT->cd();
 
       cout << "Number of items in frame " << frame->numItems() << endl;
       frm->Clear();
       cout << "Number of items in frame " << frame->numItems() << endl;
-      delete frm;
-      frm = 0;
 
       /*
       // plot each component
@@ -2868,7 +2843,7 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
     */
 
       normFile << endl << tt->GetName() << endl;
-      normFile << "Component \t PreFit \t PostFit \t Change" << endl;
+      normFile << TString::Format("%20s%20s%20s%20s", "Component", "PreFit", "PostFit", "Change") << endl;
       float totalPre(0);
       float totalPost(0);
       for (map<TString, float>::iterator ipre(preFitsChan.begin()); ipre != preFitsChan.end(); ipre++) {
@@ -2876,11 +2851,19 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
          totalPost += postFitsChan[ipre->first];
       }
       for (map<TString, float>::iterator ipre(preFitsChan.begin()); ipre != preFitsChan.end(); ipre++) {
-         normFile << ipre->first << "\t" << ipre->second << "\t" << postFitsChan[ipre->first] << "\t"
-                  << postFitsChan[ipre->first] / ipre->second << endl;
-         normFile << "\t\t" << ipre->second / totalPre << "\t" << postFitsChan[ipre->first] / totalPost << endl;
+         normFile << TString::Format(
+               "%20s%20.8e%20.8e%20.8e",
+               ipre->first.Data(), ipre->second, postFitsChan[ipre->first],
+               postFitsChan[ipre->first] / ipre->second)
+            << endl;
+         normFile << TString::Format(
+               "%20s%18.8f %%%18.8f %%",
+               "relative contrib.",  100. * ipre->second / totalPre, 100. * postFitsChan[ipre->first] / totalPost)
+            << endl;
       }
-      normFile << "total \t" << totalPre << "\t" << totalPost << "\t" << totalPost / totalPre << endl;
+      normFile << TString::Format(
+               "%20s%20.8e%20.8e%20.8e", "total", totalPre, totalPost, totalPost / totalPre)
+            << endl;
       // normFile << "total Bkgd Frac Error +/- " << (totalUp-totalNom)/totalNom << "\t" << (totalDn-totalNom)/totalNom
       // << endl; normFile << "\t\t" << totalDn << "\t" << totalNom << "\t" << totalUp << endl;
       normFile << endl;
@@ -2888,15 +2871,21 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
    } // loop over channels
 
    normFile << globOrAsim << " Normalizations" << endl;
-   normFile << "Component \t PreFit \t PostFit \t Change" << endl;
+   normFile << TString::Format("%20s%20s%20s%20s", "Component", "PreFit", "PostFit", "Change") << endl;
    for (map<TString, float>::iterator ipre(preFits.begin()); ipre != preFits.end(); ipre++) {
-      normFile << ipre->first << "\t" << ipre->second << "\t" << postFits[ipre->first] << "\t"
-               << postFits[ipre->first] / ipre->second << endl;
+      normFile << TString::Format(
+            "%20s%20.8e%20.8e%20.8e",
+            ipre->first.Data(), ipre->second, postFits[ipre->first],
+            postFits[ipre->first] / ipre->second)
+         << endl;
    }
    normFile << endl << endl;
-   normFile << "Component \t Change" << endl;
+   normFile << TString::Format("%20s%20s", "Component", "Change") << endl;
    for (map<TString, float>::iterator ipre(preFits.begin()); ipre != preFits.end(); ipre++) {
-      normFile << ipre->first << "\t" << postFits[ipre->first] / ipre->second << endl;
+      normFile << TString::Format(
+            "%20s%20.8e",
+            ipre->first.Data(), postFits[ipre->first] / ipre->second)
+         << endl;
    }
    normFile << endl << endl;
    normFile.close();
