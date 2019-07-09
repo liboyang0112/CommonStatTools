@@ -2397,7 +2397,7 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
       TCanvas *c2        = new TCanvas(cname);
       RooPlot *frame     = obs->frame();
       // TString  FrameName = "Plot_Distri" + globOrAsim + "_" + TS_IsConditionnal;
-      TString  FrameName = "Plot_Distri_" + (TString)tt->GetName() + "_" + globOrAsim + "Fit_" + TS_IsConditionnal + "_mu" + mu;
+      TString  FrameName = TString::Format("Plot_Distri_%s_%sFit_%s_mu%s", tt->GetName(), globOrAsim.Data(), TS_IsConditionnal.Data(), TString(mu).Data());
       frame->SetName(FrameName);
       frame->SetYTitle("EVENTS");
       pdftmp->plotOn(frame, FillColor(kOrange), LineWidth(2), LineColor(kBlue), VisualizeError(*fitresGlobal, 1),
