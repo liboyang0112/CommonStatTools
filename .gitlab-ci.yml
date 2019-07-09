@@ -1,31 +1,12 @@
 stages:
   - compile
-  
-variables:
-  GIT_STRATEGY: fetch
-#  GIT_SUBMODULE_STRATEGY: recursive
 
-before_script:
-  - export ATLAS_LOCAL_ROOT_BASE=/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
-  - source ${ATLAS_LOCAL_ROOT_BASE}/user/atlasLocalSetup.sh || true
-  - export MAKEFLAGS="-j`nproc` -l`nproc`"
-
-.analysis_image: &image
-  image: atlas/analysisbase:latest
-  tags:
-    - cvmfs
-  script:
-    - echo $SERVICE_PASS | kinit $CERN_USER
-
-compile_core:
+compile:
   stage: compile
-  <<: *image
+  image: gipert/root-cern
   script:
     - pwd
-    - ls *
-    - lsetup git || true
-    - lsetup "root 6.14.04-x86_64-slc6-gcc62-opt" || true
-    - lsetup cmake || true
+    - ls -l
     - mkdir build
     - cd build 
     - cmake ..

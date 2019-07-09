@@ -355,7 +355,7 @@ void EXOSTATS::HistFactoryInspector::retrieveSampleNames(TString region)
 
    for (auto prodName : m_products[region]) {
       const Int_t matched = re.Match(prodName);
-      if (matched != 2) throw runtime_error(TString::Format("Unable to parse RooProduct name"));
+      if (matched != 2) throw runtime_error("Unable to parse RooProduct name");
       m_samples[region].push_back(re[1]);
    }
 }
