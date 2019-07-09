@@ -2741,7 +2741,7 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
 
       // Save the plots
       //c3->SetName("Plot_Distri_" + (TString)tt->GetName() + "_" + globOrAsim + "Fit_" + TS_IsConditionnal + "_mu" + mu + TString("_stack"));
-      c3->SetName(TString::Format("Plot_Distri_%s_%sFit_%s_mu%.2f_stack", tt->GetName(), globOrAsim.Data(), TS_IsConditionnal.Data(), mu);
+      c3->SetName(TString::Format("Plot_Distri_%s_%sFit_%s_mu%.2f_stack", tt->GetName(), globOrAsim.Data(), TS_IsConditionnal.Data(), mu));
       c3->Update();
       MainDir->cd();
       c3->Write();
