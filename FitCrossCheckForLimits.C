@@ -2397,7 +2397,7 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
       TCanvas *c2        = new TCanvas(cname);
       RooPlot *frame     = obs->frame();
       // TString  FrameName = "Plot_Distri" + globOrAsim + "_" + TS_IsConditionnal;
-      TString  FrameName = TString::Format("Plot_Distri_%s_%sFit_%s_mu%s", tt->GetName(), globOrAsim.Data(), TS_IsConditionnal.Data(), TString(mu).Data());
+      TString  FrameName = TString::Format("Plot_Distri_%s_%sFit_%s_mu%.2f", tt->GetName(), globOrAsim.Data(), TS_IsConditionnal.Data(), mu);
       frame->SetName(FrameName);
       frame->SetYTitle("EVENTS");
       pdftmp->plotOn(frame, FillColor(kOrange), LineWidth(2), LineColor(kBlue), VisualizeError(*fitresGlobal, 1),
@@ -2740,7 +2740,8 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
       text.DrawLatex(0.22, 0.83, ts_chi2);
 
       // Save the plots
-      c3->SetName("Plot_Distri_" + (TString)tt->GetName() + "_" + globOrAsim + "Fit_" + TS_IsConditionnal + "_mu" + mu + TString("_stack"));
+      //c3->SetName("Plot_Distri_" + (TString)tt->GetName() + "_" + globOrAsim + "Fit_" + TS_IsConditionnal + "_mu" + mu + TString("_stack"));
+      c3->SetName(TString::Format("Plot_Distri_%s_%sFit_%s_mu%.2f_stack", tt->GetName(), globOrAsim.Data(), TS_IsConditionnal.Data(), mu);
       c3->Update();
       MainDir->cd();
       c3->Write();
