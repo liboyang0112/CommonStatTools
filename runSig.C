@@ -148,7 +148,6 @@ void runSig(const char *inputFile, const char *workspaceName, const char *modelC
 
    RooRealVar *mu = (RooRealVar *)mc->GetParametersOfInterest()->first();
 
-   const double mu_init = mu->getVal();
    RooAbsPdf *  pdf     = mc->GetPdf();
 
    string     condSnapshot(conditionalSnapshot);
