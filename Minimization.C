@@ -176,7 +176,7 @@ RooNLLVar *EXOSTATS::createNLL(RooStats::ModelConfig *modelConfig, RooAbsData *d
 /// \param[in] nuis nuisance parameters (if any)
 /// \param[in] numCPU number of CPUs to use in the likelihood calculation
 /// \param[out] nll negative log-likelihood
-RooNLLVar *EXOSTATS::createNLL(RooAbsPdf *pdf, RooAbsData *data, const RooArgSet *nuis, Int_t numCPU)
+RooNLLVar *EXOSTATS::createNLL(RooAbsPdf *pdf, RooAbsData *data, const RooArgSet *nuis, Int_t /*numCPU*/)
 {
    // VI: I commented out the number of CPU option due to this bug:
    // https://root-forum.cern.ch/t/numcpu-crash-with-very-simple-example/28532

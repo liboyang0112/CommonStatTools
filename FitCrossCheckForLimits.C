@@ -2553,7 +2553,7 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
 
          // Get the signal x 1 in white (for further purposes)
          if (IsConditionnal && firstPOI) firstPOI->setVal(1.0);
-         double Ntemp = (comp1->createIntegral(*obs))->getVal() * binWidth->getVal();
+         Ntemp = (comp1->createIntegral(*obs))->getVal() * binWidth->getVal();
          // pdfmodel1->plotOn(frame,LineWidth(0),Components(*comp1),LineColor(0), LineStyle(3),
          // Normalization(Ntemp,RooAbsReal::NumEvent),Name("NoStacked_"+compname));
          if (IsConditionnal && firstPOI) firstPOI->setVal(mu);
@@ -2568,18 +2568,18 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
          }
 
          // Stack bkg
-         Ntemp = (comp1->createIntegral(*obs))->getVal() * binWidth->getVal();
+         const double Ntemp1 = (comp1->createIntegral(*obs))->getVal() * binWidth->getVal();
 
-         postFits[compname] += Ntemp;
-         postFitsChan[compname] += Ntemp;
+         postFits[compname] += Ntemp1;
+         postFitsChan[compname] += Ntemp1;
 
          if (previous == "") {
             pdfmodel1->plotOn(frm, LineWidth(2), Components(*comp1), LineColor(color),
-                              Normalization(Ntemp, RooAbsReal::NumEvent), FillColor(color), DrawOption("F"),
+                              Normalization(Ntemp1, RooAbsReal::NumEvent), FillColor(color), DrawOption("F"),
                               FillStyle(1001), Name("Stacked_" + compname));
          } else {
             pdfmodel1->plotOn(frm, LineWidth(2), Components(*comp1), LineColor(color),
-                              Normalization(Ntemp, RooAbsReal::NumEvent), FillColor(color), DrawOption("F"),
+                              Normalization(Ntemp1, RooAbsReal::NumEvent), FillColor(color), DrawOption("F"),
                               FillStyle(1001), Name("Stacked_" + compname), MoveToBack(), AddTo(previous));
          }
          previous = "Stacked_" + compname;
@@ -2680,9 +2680,9 @@ void LimitCrossChecker::PlotHistosAfterFitGlobal(bool IsConditionnal, double mu,
          compname.ReplaceAll("_", "");
          if (IsConditionnal && firstPOI) firstPOI->setVal(1.0);
 
-         double Ntemp = (comp2->createIntegral(*obs))->getVal() * binWidth->getVal();
-         preFits[compname] += Ntemp;
-         preFitsChan[compname] += Ntemp;
+         const double Ntemp1 = (comp2->createIntegral(*obs))->getVal() * binWidth->getVal();
+         preFits[compname] += Ntemp1;
+         preFitsChan[compname] += Ntemp1;
          // pdfmodel2->plotOn(frame,LineWidth(0),Components(*comp2),LineColor(0), LineStyle(3),
          // Normalization(Ntemp,RooAbsReal::NumEvent),Name("NoStacked_BkgBeforeFit_"+compname));
       }
@@ -4282,7 +4282,7 @@ RooArgList LimitCrossChecker::getFloatParList(const RooAbsPdf &pdf, const RooArg
 void LimitCrossChecker::run(const Algs algorithm, float mu, float sigma, bool IsConditional,
                                                const char *infile, const char *outputdir, const char *workspaceName,
                                                const char *modelConfigName, const char *ObsDataName,
-                                               bool draw1DResponse, bool createPostfitAsimov)
+                                               bool draw1DResponse1, bool createPostfitAsimov)
 {
 
    this->writePostfitAsimData = createPostfitAsimov;
@@ -4292,7 +4292,7 @@ void LimitCrossChecker::run(const Algs algorithm, float mu, float sigma, bool Is
    int nToys = 20;
 
    // enable NLL scan plots (does not make sense for all algorithms)
-   this->draw1DResponse = draw1DResponse;
+   this->draw1DResponse = draw1DResponse1;
 
    // determine job id to set random seed for toys and parallel processing of toys / NLL scans
    this->nJobs = 1;
