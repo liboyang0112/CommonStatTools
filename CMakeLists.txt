@@ -25,7 +25,7 @@ include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS})
 add_definitions(${ROOT_CXX_FLAGS})
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} $ENV{ROOTSYS}/cmake/modules)
-include(RootNewMacros) 
+include(RootNewMacros OPTIONAL) #only for root < 6.20.02
 #ROOT_GENERATE_DICTIONARY(G__ExoStats Event.h LINKDEF EventLinkDef.h)
 #ROOT_GENERATE_DICTIONARY(G__ExoStats Minimization.h AsimovDataMaking.h AsymptoticsCLsRunner.h HistFactoryInspector.h RooExpandedFitResult.h LINKDEF LinkDef.h)
 ROOT_GENERATE_DICTIONARY(G__ExoStats RooExpandedFitResult.h LINKDEF LinkDef.h)
