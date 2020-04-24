@@ -19,7 +19,7 @@ find_package(ROOT REQUIRED COMPONENTS Graf Hist Gpad Matrix MathCore RIO Net Tre
 #---Define useful ROOT functions and macros (e.g. ROOT_GENERATE_DICTIONARY)
 if(DEFINED ENV{ROOT_USE_FILE})
   include(${ROOT_USE_FILE})
-endif() 
+endif()
 
 include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS})
 add_definitions(${ROOT_CXX_FLAGS})
@@ -42,3 +42,10 @@ endif()
 #add_executable(runAsymptoticsCLs runAsymptoticsCLs.C)
 #target_link_libraries(runAsymptoticsCLs ExoStats)
 
+# install the library
+install(TARGETS ExoStats
+        LIBRARY DESTINATION lib)
+
+# install pcm and rootmap into lib
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libExoStats_rdict.pcm DESTINATION lib)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libExoStats.rootmap DESTINATION lib)
