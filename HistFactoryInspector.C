@@ -14,6 +14,7 @@
 #include <RooArgList.h>
 #include <TMatrixDSym.h>
 #include <TVectorD.h>
+#include <TObjString.h>
 #include <RooGaussian.h>
 #include <iostream>
 #include <sstream>
