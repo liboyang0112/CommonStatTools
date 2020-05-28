@@ -59,6 +59,7 @@ Updates:
 #include <TDecompLU.h>
 #include <TPRegexp.h>
 #include <TObjArray.h>
+#include <TObjString.h>
 // RooFit
 #include <RooWorkspace.h>
 #include <RooRealVar.h>
