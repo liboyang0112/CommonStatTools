@@ -47,5 +47,10 @@ install(TARGETS ExoStats
         LIBRARY DESTINATION lib)
 
 # install pcm and rootmap into lib
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libExoStats_rdict.pcm DESTINATION lib)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libExoStats.rootmap DESTINATION lib)
+if(DEFINED CMAKE_LIBRARY_OUTPUT_DIRECTORY AND NOT CMAKE_LIBRARY_OUTPUT_DIRECTORY STREQUAL "")
+  set(pcm_output_dir ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+else()
+  set(pcm_output_dir ${CMAKE_CURRENT_BINARY_DIR})
+endif()
+install(FILES ${pcm_output_dir}/libExoStats_rdict.pcm DESTINATION lib)
+install(FILES ${pcm_output_dir}/libExoStats.rootmap DESTINATION lib)
