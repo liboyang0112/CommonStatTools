@@ -13,6 +13,8 @@ These tools try to be as general as possible, and simple to use - whenever this 
 the way they were originally designed, of course... Doxygen has been added and should be regarded
 as work in progress: there is much room for improvement, feel free to help!
 
+For support and announcements, join the [atlas-phys-stat-commonstattools](https://e-groups.cern.ch/e-groups/Egroup.do?egroupName=atlas-phys-stat-commonstattools) CERN e-group.
+
 ## Quick start
 On lxplus:
 ```
